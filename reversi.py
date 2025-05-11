@@ -2,8 +2,20 @@ import numpy as np
 import random
 import time
 import math
+import os
 from copy import deepcopy
 from tqdm import tqdm
+
+# Try to import platform-specific modules for keyboard input
+try:
+    import msvcrt  # Windows
+except ImportError:
+    try:
+        import sys
+        import tty
+        import termios  # Unix
+    except ImportError:
+        pass  # Neither available, will use fallback
 
 class ReversiBoard:
     """
@@ -153,22 +165,44 @@ class ReversiBoard:
         new_board.current_player = self.current_player
         return new_board
     
-    def print_board(self):
-        """Print the current board state."""
-        print("  " + " ".join([str(i) for i in range(self.size)]))
+    def print_board(self, highlighted_pos=None):
+        """
+        Print the current board state with a nicer display.
+        
+        Args:
+            highlighted_pos: Optional (row, col) tuple to highlight a position
+        """
+        # Clear the screen first (works on most terminals)
+        print("\033c", end="")
+        
+        # Print column headers (A through H)
+        col_headers = "    " + "   ".join([chr(65 + i) for i in range(self.size)])
+        print(col_headers)
+        
+        # Print the top border
+        print("  +" + "---+" * self.size)
+        
+        # Print each row
         for i in range(self.size):
-            row_str = str(i) + " "
+            row_str = f"{i+1} |"
             for j in range(self.size):
-                if self.board[i][j] == 0:
-                    row_str += ". "
-                elif self.board[i][j] == 1:
-                    row_str += "B "  # Black
+                cell = " "
+                if self.board[i][j] == 1:
+                    cell = "1"  # Black
+                elif self.board[i][j] == 2:
+                    cell = "0"  # White
+                
+                # Highlight the cell if it's the selected position
+                if highlighted_pos and highlighted_pos[0] == i and highlighted_pos[1] == j:
+                    row_str += f"\033[7m {cell} \033[0m|"  # Inverse video for highlighting
                 else:
-                    row_str += "W "  # White
+                    row_str += f" {cell} |"
+                    
             print(row_str)
+            print("  +" + "---+" * self.size)
         
         black_count, white_count = self.count_pieces()
-        print(f"Black: {black_count}, White: {white_count}")
+        print(f"1: Black: {black_count}  |  0: White: {white_count}")
 
 
 class MinimaxPlayer:
@@ -565,7 +599,66 @@ def compare_algorithms(num_games=10, board_size=8):
 
 
 def play_interactive_game():
-    """Play an interactive game against an AI opponent."""
+    """Play an interactive game against an AI opponent with interactive board navigation."""
+    try:
+        import msvcrt  # For Windows
+        get_key_windows = True
+    except ImportError:
+        try:
+            import tty, sys, termios  # For Unix
+            get_key_windows = False
+        except ImportError:
+            print("Your platform doesn't support interactive mode. Using fallback input.")
+            get_key_windows = None
+            
+    def get_key():
+        """Get a single keypress from the user."""
+        if get_key_windows is None:
+            # Fallback - use regular input
+            return input("Enter your move (e.g. C4): ")
+        elif get_key_windows:
+            # Windows
+            ch = msvcrt.getch()
+            if ch == b'\xe0':  # Special key prefix
+                ch = msvcrt.getch()
+                if ch == b'H':  # Up arrow
+                    return 'UP'
+                elif ch == b'P':  # Down arrow
+                    return 'DOWN'
+                elif ch == b'K':  # Left arrow
+                    return 'LEFT'
+                elif ch == b'M':  # Right arrow
+                    return 'RIGHT'
+            elif ch == b'\r':  # Enter key
+                return 'ENTER'
+            elif ch == b' ':   # Space key
+                return 'SPACE'
+            return ch.decode('utf-8')
+        else:
+            # Unix
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                ch = sys.stdin.read(1)
+                if ch == '\x1b':  # Escape sequence
+                    ch = sys.stdin.read(2)
+                    if ch == '[A':  # Up arrow
+                        return 'UP'
+                    elif ch == '[B':  # Down arrow
+                        return 'DOWN'
+                    elif ch == '[D':  # Left arrow
+                        return 'LEFT'
+                    elif ch == '[C':  # Right arrow
+                        return 'RIGHT'
+                elif ch == '\r':  # Enter key
+                    return 'ENTER'
+                elif ch == ' ':   # Space key
+                    return 'SPACE'
+                return ch
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    
     print("Welcome to Reversi!")
     print("1. Play as Black against Minimax")
     print("2. Play as White against Minimax")
@@ -578,49 +671,94 @@ def play_interactive_game():
     if choice == 1:
         human_player = 1
         ai_player = MinimaxPlayer(2, depth=3)
+        ai_name = "Minimax"
     elif choice == 2:
         human_player = 2
         ai_player = MinimaxPlayer(1, depth=3)
+        ai_name = "Minimax"
     elif choice == 3:
         human_player = 1
         ai_player = MCTSPlayer(2, iterations=1000)
+        ai_name = "MCTS"
     else:
         human_player = 2
         ai_player = MCTSPlayer(1, iterations=1000)
+        ai_name = "MCTS"
     
-    board.print_board()
+    print(f"\nPlaying as {'Black' if human_player == 1 else 'White'} against {ai_name}.")
+    print("Use arrow keys to navigate the board.")
+    print("Press Enter or Space to confirm your move.")
+    print("Press any key to start...")
+    if get_key_windows is not None:
+        get_key()
+    else:
+        input()
     
     while not board.is_game_over():
+        valid_moves = board.get_valid_moves()
+        
         if board.current_player == human_player:
-            if board.has_valid_moves():
-                valid_moves = board.get_valid_moves()
-                print("Valid moves:", valid_moves)
+            if valid_moves:
+                # Interactive move selection
+                current_idx = 0
+                highlight_pos = valid_moves[current_idx]
+                
+                board.print_board(highlight_pos)
+                print(f"Your turn ({'Black' if human_player == 1 else 'White'})")
+                print(f"Move {current_idx + 1}/{len(valid_moves)}: {chr(65 + highlight_pos[1])}{highlight_pos[0] + 1}")
+                print("Use LEFT/RIGHT arrows to cycle through valid moves, ENTER to confirm")
                 
                 while True:
-                    try:
-                        row = int(input("Enter row: "))
-                        col = int(input("Enter column: "))
-                        if board.make_move(row, col, human_player):
-                            break
-                        else:
-                            print("Invalid move. Try again.")
-                    except ValueError:
-                        print("Please enter valid numbers.")
+                    key = get_key()
+                    
+                    if key == 'LEFT':
+                        current_idx = (current_idx - 1) % len(valid_moves)
+                        highlight_pos = valid_moves[current_idx]
+                    elif key == 'RIGHT':
+                        current_idx = (current_idx + 1) % len(valid_moves)
+                        highlight_pos = valid_moves[current_idx]
+                    elif key in ['ENTER', 'SPACE']:
+                        # Confirm move
+                        board.make_move(highlight_pos[0], highlight_pos[1], human_player)
+                        break
+                    
+                    # Update the display
+                    board.print_board(highlight_pos)
+                    print(f"Your turn ({'Black' if human_player == 1 else 'White'})")
+                    print(f"Move {current_idx + 1}/{len(valid_moves)}: {chr(65 + highlight_pos[1])}{highlight_pos[0] + 1}")
+                    print("Use LEFT/RIGHT arrows to cycle through valid moves, ENTER to confirm")
             else:
+                board.print_board()
                 print("You have no valid moves. Passing...")
+                print("Press any key to continue...")
+                if get_key_windows is not None:
+                    get_key()
+                else:
+                    input()
                 board.current_player = 3 - board.current_player
         else:
-            if board.has_valid_moves():
-                print("AI is thinking...")
+            board.print_board()
+            if valid_moves:
+                print(f"AI ({ai_name}) is thinking...")
                 move = ai_player.get_move(board)
-                print(f"AI plays: {move}")
-                board.make_move(move[0], move[1], board.current_player)
+                print(f"AI plays: {chr(65 + move[1])}{move[0] + 1}")
+                board.make_move(move[0], move[1])
+                print("Press any key to continue...")
+                if get_key_windows is not None:
+                    get_key()
+                else:
+                    input()
             else:
                 print("AI has no valid moves. Passing...")
+                print("Press any key to continue...")
+                if get_key_windows is not None:
+                    get_key()
+                else:
+                    input()
                 board.current_player = 3 - board.current_player
-        
-        board.print_board()
     
+    # Game over
+    board.print_board()
     winner = board.get_winner()
     black_count, white_count = board.count_pieces()
     
@@ -634,6 +772,16 @@ def play_interactive_game():
     else:
         print("AI wins!")
 
+
+def coord_to_algebraic(row, col):
+    """Convert (row, col) coordinates to algebraic notation (e.g., 'C4')."""
+    return f"{chr(65 + col)}{row + 1}"
+
+def algebraic_to_coord(algebraic):
+    """Convert algebraic notation (e.g., 'C4') to (row, col) coordinates."""
+    col = ord(algebraic[0]) - 65
+    row = int(algebraic[1:]) - 1
+    return row, col
 
 # Main program
 if __name__ == "__main__":
