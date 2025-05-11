@@ -175,6 +175,9 @@ class ReversiBoard:
         # Clear the screen first (works on most terminals)
         print("\033c", end="")
         
+        # Get valid moves for current player to mark with asterisk
+        valid_moves = self.get_valid_moves()
+        
         # Print column headers (A through H)
         col_headers = "    " + "   ".join([chr(65 + i) for i in range(self.size)])
         print(col_headers)
@@ -186,11 +189,15 @@ class ReversiBoard:
         for i in range(self.size):
             row_str = f"{i+1} |"
             for j in range(self.size):
-                cell = " "
+                # Determine cell content
                 if self.board[i][j] == 1:
                     cell = "1"  # Black
                 elif self.board[i][j] == 2:
                     cell = "0"  # White
+                elif (i, j) in valid_moves:
+                    cell = "*"  # Valid move
+                else:
+                    cell = " "  # Empty
                 
                 # Highlight the cell if it's the selected position
                 if highlighted_pos and highlighted_pos[0] == i and highlighted_pos[1] == j:
@@ -203,6 +210,7 @@ class ReversiBoard:
         
         black_count, white_count = self.count_pieces()
         print(f"1: Black: {black_count}  |  0: White: {white_count}")
+        print(f"* marks valid moves for {self.current_player == 1 and 'Black' or 'White'}")
 
 
 class MinimaxPlayer:
@@ -686,7 +694,8 @@ def play_interactive_game():
         ai_name = "MCTS"
     
     print(f"\nPlaying as {'Black' if human_player == 1 else 'White'} against {ai_name}.")
-    print("Use arrow keys to navigate the board.")
+    print("Valid moves are marked with *")
+    print("Use LEFT/RIGHT arrow keys to cycle through valid moves.")
     print("Press Enter or Space to confirm your move.")
     print("Press any key to start...")
     if get_key_windows is not None:
@@ -740,10 +749,24 @@ def play_interactive_game():
             board.print_board()
             if valid_moves:
                 print(f"AI ({ai_name}) is thinking...")
+                # Give the player a chance to see the board before AI moves
+                time.sleep(0.5)
                 move = ai_player.get_move(board)
-                print(f"AI plays: {chr(65 + move[1])}{move[0] + 1}")
-                board.make_move(move[0], move[1])
+                print(f"AI plays: {coord_to_algebraic(move[0], move[1])}")
+                
+                # Highlight the AI's move temporarily
+                board.print_board(move)
+                print(f"AI ({ai_name}) plays: {coord_to_algebraic(move[0], move[1])}")
                 print("Press any key to continue...")
+                
+                # Wait for keypress before executing the move
+                if get_key_windows is not None:
+                    get_key()
+                else:
+                    input()
+                
+                # Now actually make the move
+                board.make_move(move[0], move[1])
                 if get_key_windows is not None:
                     get_key()
                 else:
