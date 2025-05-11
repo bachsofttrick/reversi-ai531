@@ -623,7 +623,10 @@ def play_interactive_game():
         """Get a single keypress from the user."""
         if get_key_windows is None:
             # Fallback - use regular input
-            return input("Enter your move (e.g. C4): ")
+            key = input("Enter your move (e.g. C4) or 'q' to quit: ")
+            if key.lower() == 'q':
+                return 'QUIT'
+            return key
         elif get_key_windows:
             # Windows
             ch = msvcrt.getch()
@@ -641,6 +644,8 @@ def play_interactive_game():
                 return 'ENTER'
             elif ch == b' ':   # Space key
                 return 'SPACE'
+            elif ch == b'q' or ch == b'Q':  # Quit
+                return 'QUIT'
             return ch.decode('utf-8')
         else:
             # Unix
@@ -663,6 +668,8 @@ def play_interactive_game():
                     return 'ENTER'
                 elif ch == ' ':   # Space key
                     return 'SPACE'
+                elif ch == 'q' or ch == 'Q':  # Quit
+                    return 'QUIT'
                 return ch
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
@@ -697,11 +704,18 @@ def play_interactive_game():
     print("Valid moves are marked with *")
     print("Use LEFT/RIGHT arrow keys to cycle through valid moves.")
     print("Press Enter or Space to confirm your move.")
-    print("Press any key to start...")
+    print("Press Q at any time to quit the game.")
+    print("Press any key to start (or Q to quit)...")
     if get_key_windows is not None:
-        get_key()
+        key = get_key()
+        if key == 'QUIT':
+            print("\nExiting game...")
+            return  # Exit the function to quit the game
     else:
-        input()
+        key = input()
+        if key.lower() == 'q':
+            print("\nExiting game...")
+            return  # Exit the function to quit the game
     
     while not board.is_game_over():
         valid_moves = board.get_valid_moves()
@@ -720,7 +734,10 @@ def play_interactive_game():
                 while True:
                     key = get_key()
                     
-                    if key == 'LEFT':
+                    if key == 'QUIT':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
+                    elif key == 'LEFT':
                         current_idx = (current_idx - 1) % len(valid_moves)
                         highlight_pos = valid_moves[current_idx]
                     elif key == 'RIGHT':
@@ -739,11 +756,17 @@ def play_interactive_game():
             else:
                 board.print_board()
                 print("You have no valid moves. Passing...")
-                print("Press any key to continue...")
+                print("Press any key to continue (or Q to quit)...")
                 if get_key_windows is not None:
-                    get_key()
+                    key = get_key()
+                    if key == 'QUIT':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
                 else:
-                    input()
+                    key = input()
+                    if key.lower() == 'q':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
                 board.current_player = 3 - board.current_player
         else:
             board.print_board()
@@ -757,13 +780,19 @@ def play_interactive_game():
                 # Highlight the AI's move temporarily
                 board.print_board(move)
                 print(f"AI ({ai_name}) plays: {coord_to_algebraic(move[0], move[1])}")
-                print("Press any key to continue...")
+                print("Press any key to continue (or Q to quit)...")
                 
                 # Wait for keypress before executing the move
                 if get_key_windows is not None:
-                    get_key()
+                    key = get_key()
+                    if key == 'QUIT':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
                 else:
-                    input()
+                    key = input()
+                    if key.lower() == 'q':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
                 
                 # Now actually make the move
                 board.make_move(move[0], move[1])
@@ -773,11 +802,17 @@ def play_interactive_game():
                     input()
             else:
                 print("AI has no valid moves. Passing...")
-                print("Press any key to continue...")
+                print("Press any key to continue (or Q to quit)...")
                 if get_key_windows is not None:
-                    get_key()
+                    key = get_key()
+                    if key == 'QUIT':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
                 else:
-                    input()
+                    key = input()
+                    if key.lower() == 'q':
+                        print("\nExiting game...")
+                        return  # Exit the function to quit the game
                 board.current_player = 3 - board.current_player
     
     # Game over
