@@ -10,6 +10,6 @@ Minimax change the depth of tree: 3,4,5,6,7,8.
 Monte Carlo change the iteration count: 10, 20, 50, 100, 200, 500.  
 We compare:
 - Total move, total time spent thinking for each algorithm
-- Average time spent per moves for each algorithm
-- Which moves cost the most time for each algorithm
+- Average time spent per move for each algorithm
+- Which move costs the most time for each algorithm
 - Win rate
