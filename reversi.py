@@ -524,7 +524,7 @@ def compare_algorithms(num_games=10, board_size=8):
     for i in range(num_games):
         # Play with Minimax as black (player 1)
         minimax_player = MinimaxPlayer(1, depth=3)
-        mcts_player = MCTSPlayer(2, iterations=1000)
+        mcts_player = MCTSPlayer(2, iterations=10)
         
         start_time = time.time()
         winner, black_score, white_score = play_game(minimax_player, mcts_player, board_size)
@@ -551,7 +551,7 @@ def compare_algorithms(num_games=10, board_size=8):
         
         # Play with MCTS as black (player 1)
         minimax_player = MinimaxPlayer(2, depth=3)
-        mcts_player = MCTSPlayer(1, iterations=1000)
+        mcts_player = MCTSPlayer(1, iterations=10)
         
         start_time = time.time()
         winner, black_score, white_score = play_game(mcts_player, minimax_player, board_size)
