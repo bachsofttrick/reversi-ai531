@@ -199,12 +199,38 @@ class ReversiBoard:
         print(f"1: Black: {black_count}  |  0: White: {white_count}")
         print(f"* marks valid moves for {self.current_player == 1 and 'Black' or 'White'}")
 
+class ReversiPlayer:
+    def __init__(self):
+        self.move_number = 0
+        self.total_time = 0
+        self.max_time_per_move = 0
+        self.move_of_max_time = 0
+        pass
+    
+    def get_move(self, board: ReversiBoard):
+        pass
 
-class MinimaxPlayer:
+    def get_move_timed(self, board: ReversiBoard):
+        start_time = time.time()
+        move = self.get_move(board)
+        total_time = time.time() - start_time
+        self.total_time += total_time
+        self.move_number += 1
+        if total_time > self.max_time_per_move:
+            self.max_time_per_move = total_time
+            self.move_of_max_time = self.move_number
+        return move
+    
+    def average_time(self):
+        return self.total_time / self.move_number if self.move_number > 0 else 0
+
+
+class MinimaxPlayer(ReversiPlayer):
     """
     AI player using Minimax algorithm with Alpha-Beta pruning.
     """
     def __init__(self, player_number, depth=4):
+        super().__init__()
         self.player_number = player_number
         self.depth = depth
         
@@ -344,63 +370,62 @@ class MinimaxPlayer:
         
         return total_score
 
-
-class MonteCarloNode:
-    """A node in the Monte Carlo Search Tree."""
-    def __init__(self, board: ReversiBoard, parent=None, move=None):
-        self.board = board
-        self.parent = parent
-        self.move = move  # The move that led to this board state
-        self.children: list[MonteCarloNode] = []
-        self.wins = 0
-        self.visits = 0
-        self.untried_moves = board.get_valid_moves()
-    
-    def select_child(self):
-        """Select a child node using UCB1 formula."""
-        # UCB1 formula: wins/visits + C * sqrt(ln(parent visits) / visits)
-        C = 1.41  # Exploration parameter
+class MCTSPlayer(ReversiPlayer):
+    class MonteCarloNode:
+        """A node in the Monte Carlo Search Tree."""
+        def __init__(self, board: ReversiBoard, parent=None, move=None):
+            self.board = board
+            self.parent = parent
+            self.move = move  # The move that led to this board state
+            self.children: list[MCTSPlayer.MonteCarloNode] = []
+            self.wins = 0
+            self.visits = 0
+            self.untried_moves = board.get_valid_moves()
         
-        best_score = float('-inf')
-        best_child = None
-        
-        for child in self.children:
-            # Avoid division by zero
-            if child.visits == 0:
-                score = float('inf')
-            else:
-                exploitation = child.wins / child.visits
-                exploration = C * math.sqrt(math.log(self.visits) / child.visits)
-                score = exploitation + exploration
+        def select_child(self):
+            """Select a child node using UCB1 formula."""
+            # UCB1 formula: wins/visits + C * sqrt(ln(parent visits) / visits)
+            C = 1.41  # Exploration parameter
             
-            if score > best_score:
-                best_score = score
-                best_child = child
+            best_score = float('-inf')
+            best_child = None
+            
+            for child in self.children:
+                # Avoid division by zero
+                if child.visits == 0:
+                    score = float('inf')
+                else:
+                    exploitation = child.wins / child.visits
+                    exploration = C * math.sqrt(math.log(self.visits) / child.visits)
+                    score = exploitation + exploration
+                
+                if score > best_score:
+                    best_score = score
+                    best_child = child
+            
+            return best_child
         
-        return best_child
-    
-    def add_child(self, move):
-        """Add a child node with the given move."""
-        board_copy = self.board.copy()
-        board_copy.make_move(move[0], move[1])
+        def add_child(self, move):
+            """Add a child node with the given move."""
+            board_copy = self.board.copy()
+            board_copy.make_move(move[0], move[1])
+            
+            child = MCTSPlayer.MonteCarloNode(board_copy, parent=self, move=move)
+            self.untried_moves.remove(move)
+            self.children.append(child)
+            
+            return child
         
-        child = MonteCarloNode(board_copy, parent=self, move=move)
-        self.untried_moves.remove(move)
-        self.children.append(child)
-        
-        return child
-    
-    def update(self, result):
-        """Update this node with a simulation result."""
-        self.visits += 1
-        self.wins += result
-
-
-class MCTSPlayer:
+        def update(self, result):
+            """Update this node with a simulation result."""
+            self.visits += 1
+            self.wins += result
+            
     """
     AI player using Monte Carlo Tree Search.
     """
     def __init__(self, player_number, iterations=1000):
+        super().__init__()
         self.player_number = player_number
         self.iterations = iterations
     
@@ -419,7 +444,7 @@ class MCTSPlayer:
         board_copy = board.copy()
         # Make sure it's our turn
         board_copy.current_player = self.player_number
-        root = MonteCarloNode(board_copy)
+        root = MCTSPlayer.MonteCarloNode(board_copy)
         
         # Run MCTS iterations
         for _ in range(self.iterations):
@@ -469,41 +494,45 @@ class MCTSPlayer:
         
         return best_move
 
+class ReversiGame:
+    def __init__(self, player1: ReversiPlayer, player2: ReversiPlayer, board_size=8, print_board=False):
+        self.board = ReversiBoard(board_size)
+        self.players = {1: player1, 2: player2}
+        self.print_board = print_board
+        self.winner = 0
+        self.black_count = 0
+        self.white_count = 0
 
-def play_game(player1, player2, board_size=8, print_board=False):
-    """Play a game between two AI players."""
-    board = ReversiBoard(board_size)
-    players = {1: player1, 2: player2}
-    
-    while not board.is_game_over():
-        if board.has_valid_moves():
-            player = players[board.current_player]
-            move = player.get_move(board)
-            board.make_move(move[0], move[1])
-            
-            if print_board:
-                print(f"Player {board.get_opponent(board.current_player)} plays {move}")
-                board.print_board()
-                print()
-        else:
-            # No valid moves, switch players
-            board.current_player = 3 - board.current_player
-            if print_board:
-                print(f"Player {board.get_opponent(board.current_player)} has no valid moves. Passing...")
-    
-    winner = board.get_winner()
-    black_count, white_count = board.count_pieces()
-    
-    if print_board:
-        print("Game over!")
-        print(f"Final score - Black: {black_count}, White: {white_count}")
-        if winner == 0:
-            print("It's a draw!")
-        else:
-            print(f"Player {winner} wins!")
-    
-    return winner, black_count, white_count
-
+    def play_game(self):
+        """Play a game between two AI players."""
+        while not self.board.is_game_over():
+            if self.board.has_valid_moves():
+                player = self.players[self.board.current_player]
+                move = player.get_move_timed(self.board)
+                self.board.make_move(move[0], move[1])
+                
+                if self.print_board:
+                    print(f"Player {self.board.get_opponent(self.board.current_player)} plays {move}")
+                    self.board.print_board()
+                    print()
+            else:
+                # No valid moves, switch players
+                self.board.current_player = 3 - self.board.current_player
+                if self.print_board:
+                    print(f"Player {self.board.get_opponent(self.board.current_player)} has no valid moves. Passing...")
+        
+        self.winner = self.board.get_winner()
+        self.black_count, self.white_count = self.board.count_pieces()
+        
+        if self.print_board:
+            print("Game over!")
+            print(f"Final score - Black: {self.black_count}, White: {self.white_count}")
+            if self.winner == 0:
+                print("It's a draw!")
+            else:
+                print(f"Player {self.winner} wins!")
+        
+        return self.winner, self.black_count, self.white_count
 
 def compare_algorithms(num_games=10, board_size=8):
     """Compare Minimax with Alpha-Beta pruning against Monte Carlo Tree Search."""
@@ -525,9 +554,10 @@ def compare_algorithms(num_games=10, board_size=8):
         # Play with Minimax as black (player 1)
         minimax_player = MinimaxPlayer(1, depth=3)
         mcts_player = MCTSPlayer(2, iterations=10)
+        game1 = ReversiGame(minimax_player, mcts_player, board_size)
         
         start_time = time.time()
-        winner, black_score, white_score = play_game(minimax_player, mcts_player, board_size)
+        winner, black_score, white_score = game1.play_game()
         end_time = time.time()
         
         if winner == 1:
@@ -552,9 +582,10 @@ def compare_algorithms(num_games=10, board_size=8):
         # Play with MCTS as black (player 1)
         minimax_player = MinimaxPlayer(2, depth=3)
         mcts_player = MCTSPlayer(1, iterations=10)
+        game2 = ReversiGame(mcts_player, minimax_player, board_size)
         
         start_time = time.time()
-        winner, black_score, white_score = play_game(mcts_player, minimax_player, board_size)
+        winner, black_score, white_score = game2.play_game()
         end_time = time.time()
         
         if winner == 2:
