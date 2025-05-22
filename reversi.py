@@ -220,7 +220,7 @@ class MinimaxPlayer:
             [120, -20, 20,  5,  5, 20, -20, 120]
         ])
     
-    def get_move(self, board):
+    def get_move(self, board: ReversiBoard):
         """Get the best move using Minimax with Alpha-Beta pruning."""
         valid_moves = board.get_valid_moves(self.player_number)
         
@@ -301,7 +301,7 @@ class MinimaxPlayer:
                     break  # Alpha cutoff
             return min_eval
     
-    def evaluate(self, board):
+    def evaluate(self, board: ReversiBoard):
         """
         Evaluate the current board state from the perspective of this player.
         Higher scores are better for this player.
@@ -404,7 +404,7 @@ class MCTSPlayer:
         self.player_number = player_number
         self.iterations = iterations
     
-    def get_move(self, board):
+    def get_move(self, board: ReversiBoard):
         """Get the best move using Monte Carlo Tree Search."""
         valid_moves = board.get_valid_moves(self.player_number)
         
