@@ -2,20 +2,7 @@ import numpy as np
 import random
 import time
 import math
-import os
 from copy import deepcopy
-from tqdm import tqdm
-
-# Try to import platform-specific modules for keyboard input
-try:
-    import msvcrt  # Windows
-except ImportError:
-    try:
-        import sys
-        import tty
-        import termios  # Unix
-    except ImportError:
-        pass  # Neither available, will use fallback
 
 class ReversiBoard:
     """
@@ -265,7 +252,7 @@ class MinimaxPlayer:
         
         return best_move
     
-    def minimax(self, board, depth, alpha, beta, is_maximizing):
+    def minimax(self, board: ReversiBoard, depth, alpha, beta, is_maximizing):
         """
         Minimax algorithm with Alpha-Beta pruning.
         
@@ -360,11 +347,11 @@ class MinimaxPlayer:
 
 class MonteCarloNode:
     """A node in the Monte Carlo Search Tree."""
-    def __init__(self, board, parent=None, move=None):
+    def __init__(self, board: ReversiBoard, parent=None, move=None):
         self.board = board
         self.parent = parent
         self.move = move  # The move that led to this board state
-        self.children = []
+        self.children: list[MonteCarloNode] = []
         self.wins = 0
         self.visits = 0
         self.untried_moves = board.get_valid_moves()
@@ -486,7 +473,6 @@ class MCTSPlayer:
 def play_game(player1, player2, board_size=8, print_board=False):
     """Play a game between two AI players."""
     board = ReversiBoard(board_size)
-    current_player = 1  # Black goes first
     players = {1: player1, 2: player2}
     
     while not board.is_game_over():
@@ -535,7 +521,7 @@ def compare_algorithms(num_games=10, board_size=8):
     
     print(f"Playing {num_games} games...")
     
-    for i in tqdm(range(num_games)):
+    for i in range(num_games):
         # Play with Minimax as black (player 1)
         minimax_player = MinimaxPlayer(1, depth=3)
         mcts_player = MCTSPlayer(2, iterations=1000)
