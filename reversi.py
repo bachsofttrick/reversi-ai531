@@ -607,8 +607,8 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
     for i in range(num_games):
         # Play with Minimax as black (player 1)
         print(f"Game {i*2+1}: Minimax(Black) vs MCTS(White)")
-        minimax_player = MinimaxPlayer(1, depth=3)
-        mcts_player = MCTSPlayer(2, iterations=10)
+        minimax_player = MinimaxPlayer(1, minimax_depth)
+        mcts_player = MCTSPlayer(2, mcts_itereation)
         game1 = ReversiGame(minimax_player, mcts_player, board_size)
         winner, _, _ = game1.play_game()
         
@@ -629,8 +629,8 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
 
         # Play with MCTS as black (player 1)
         print(f"Game {i*2+2}: MCTS(Black) vs Minimax(White)")
-        minimax_player = MinimaxPlayer(2, depth=3)
-        mcts_player = MCTSPlayer(1, iterations=10)
+        minimax_player = MinimaxPlayer(2, minimax_depth)
+        mcts_player = MCTSPlayer(1, mcts_itereation)
         game2 = ReversiGame(mcts_player, minimax_player, board_size)
         winner, _, _ = game2.play_game()
 
