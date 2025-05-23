@@ -5,8 +5,11 @@ import math
 from copy import deepcopy
 import multiprocessing as mp
 import argparse
+import csv
 
 num_games = 5
+debug = False
+report_file = 'results.csv'
 
 class ReversiBoard:
     """
@@ -649,14 +652,14 @@ def run_experiments(multiprocess=False):
     minimax_depths = [3, 4, 5, 6, 7, 8]
     monte_carlo_iterations = [10, 20, 50, 100, 200, 500]
 
+    # List to store all results
     results_list = []
 
     if multiprocess:
+        # Use all available CPU cores
         num_processes = mp.cpu_count()
-
+        # List to store all tasks
         tasks = []
-
-        print(f"Running experiments using {num_processes} processes")
 
         for m in minimax_depths:
             for n in monte_carlo_iterations:
@@ -664,6 +667,7 @@ def run_experiments(multiprocess=False):
                     task = (num_games, b, m, n)
                     tasks.append(task)
         
+        print(f"Running experiments using {num_processes} processes")
         print(f"Starting {len(tasks)} tasks...")
 
         # Create a pool of worker processes
@@ -671,6 +675,8 @@ def run_experiments(multiprocess=False):
             # Map tasks to the worker function
             results_list = pool.starmap(compare_algorithms, tasks)
     else:
+        print("Running in single-process mode...")
+
         for m in minimax_depths:
             for n in monte_carlo_iterations:
                 for b in board_sizes:
@@ -679,6 +685,53 @@ def run_experiments(multiprocess=False):
 
     return results_list
 
+def save_to_csv(results):
+    # Open a CSV file for writing
+    with open(report_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        
+        header = ["Puzzle #", "Difficulty", "# Initial cells", "Rules", "Cell Selection",
+                  "Solved", "Search Steps", "Backtrack Count", "Time (s)", "Difficulty by the rules used to solve"]
+        writer.writerow(header)
+        '''
+        # Write each result in a row
+        for puzzle in results:
+            puzzle_number = puzzle["number"]
+            difficulty = puzzle["difficulty"]
+            puzzle_results = puzzle["results"]
+            difficulty_interference = puzzle["difficulty_interference"]
+
+            for r in puzzle_results:
+                row = [
+                    puzzle_number,
+                    difficulty,
+                    r["initial_filled"],
+                    r["rule"],
+                    r["cell_selection"],
+                    r["solved"],
+                    r["steps"],
+                    r["backtrack_count"],
+                    round(r["time"], 6),
+                    difficulty_interference
+                ]
+                writer.writerow(row)
+        '''
+
+def main():
+    # Access global variable
+    global debug
+
+    parser = argparse.ArgumentParser(description="Reversi: MInimax vs Monte Carlo")
+    parser.add_argument('--multi', action='store_true', help="Run in multiprocessing mode")
+    parser.add_argument('--debug', action='store_true', help="Enable debug output")
+
+    args = parser.parse_args()
+    # Change variables if they are offered in arguments
+    if args.debug != debug: debug = args.debug
+
+    results = run_experiments(args.multi)
+    #save_to_csv(results)
+
 # Main program
 if __name__ == "__main__":
-    run_experiments()
+    main()
