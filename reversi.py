@@ -3,6 +3,10 @@ import random
 import time
 import math
 from copy import deepcopy
+import multiprocessing as mp
+import argparse
+
+num_games = 5
 
 class ReversiBoard:
     """
@@ -533,21 +537,26 @@ class ReversiGame:
         return self.winner, self.black_count, self.white_count
 
 class CompareResult:
+    """Result of the Reversi game to print to csv."""
+
     class AlgorithmStatistic:
+        """Statistic for each algorithm player."""
         def __init__(self, depth):
             self.depth = depth
             self.win = 0
             self.win_rate = 0
-    
-    class PlayerStatistic:
-        def __init__(self, player: ReversiPlayer):
-            self.total_time = player.total_time
-            self.move_number = player.move_number
-            self.average_time = player.average_time()
-            self.max_time_per_move = player.max_time_per_move
-            self.move_of_max_time = player.move_of_max_time
 
     class GameResult:
+        """Statistic for each game and its accompanying players."""
+
+        class PlayerStatistic:
+            def __init__(self, player: ReversiPlayer):
+                self.total_time = player.total_time
+                self.move_number = player.move_number
+                self.average_time = player.average_time()
+                self.max_time_per_move = player.max_time_per_move
+                self.move_of_max_time = player.move_of_max_time
+        
         def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
             check_player1_is_minimax = player1.__class__.__name__ == MinimaxPlayer.__name__
 
@@ -555,8 +564,8 @@ class CompareResult:
             self.minimax_player = 1 if check_player1_is_minimax else 2
             self.mcts_player = 2 if check_player1_is_minimax else 1
             self.winner = winner
-            self.minimax = CompareResult.PlayerStatistic(player1 if check_player1_is_minimax else player2)
-            self.mcts = CompareResult.PlayerStatistic(player2 if check_player1_is_minimax else player1)
+            self.minimax = CompareResult.GameResult.PlayerStatistic(player1 if check_player1_is_minimax else player2)
+            self.mcts = CompareResult.GameResult.PlayerStatistic(player2 if check_player1_is_minimax else player1)
 
     def __init__(self, num_games=10, board_size=8, minimax_depth = 3, mcts_itereation = 10):
         self.num_games = num_games
@@ -584,20 +593,21 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
     """Compare Minimax with Alpha-Beta pruning against Monte Carlo Tree Search."""
     result = CompareResult(num_games, board_size, minimax_depth, mcts_itereation)
 
+    # Count number of wins for players and draws
     minimax_wins = 0
     mcts_wins = 0
     draws = 0
     
-    print(f"Playing {num_games} games...")
+    print(f"Playing {num_games*2} games...")
     
     for i in range(num_games):
         # Play with Minimax as black (player 1)
         minimax_player = MinimaxPlayer(1, depth=3)
         mcts_player = MCTSPlayer(2, iterations=10)
         game1 = ReversiGame(minimax_player, mcts_player, board_size)
-        
         winner, _, _ = game1.play_game()
         
+        # Increase win
         if winner == 1:
             minimax_wins += 1
         elif winner == 2:
@@ -611,9 +621,9 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         minimax_player = MinimaxPlayer(2, depth=3)
         mcts_player = MCTSPlayer(1, iterations=10)
         game2 = ReversiGame(mcts_player, minimax_player, board_size)
-        
         winner, _, _ = game2.play_game()
         
+        # Increase win
         if winner == 2:
             minimax_wins += 1
         elif winner == 1:
@@ -630,7 +640,45 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
 
     return result
 
+def run_experiments(multiprocess=False):
+    """
+    Test Minimax vs Monte Carlo across different board sizes and parameters.
+    """
+    #board_sizes = [4, 6, 8, 10, 12, 14, 16]
+    board_sizes = [8]
+    minimax_depths = [3, 4, 5, 6, 7, 8]
+    monte_carlo_iterations = [10, 20, 50, 100, 200, 500]
+
+    results_list = []
+
+    if multiprocess:
+        num_processes = mp.cpu_count()
+
+        tasks = []
+
+        print(f"Running experiments using {num_processes} processes")
+
+        for m in minimax_depths:
+            for n in monte_carlo_iterations:
+                for b in board_sizes:
+                    task = (num_games, b, m, n)
+                    tasks.append(task)
+        
+        print(f"Starting {len(tasks)} tasks...")
+
+        # Create a pool of worker processes
+        with mp.Pool(processes=num_processes) as pool:
+            # Map tasks to the worker function
+            results_list = pool.starmap(compare_algorithms, tasks)
+    else:
+        for m in minimax_depths:
+            for n in monte_carlo_iterations:
+                for b in board_sizes:
+                    result = compare_algorithms(num_games, b, m, n)
+                    results_list.append(result)
+
+    return results_list
+
 # Main program
 if __name__ == "__main__":
-    num_games = int(input("Enter number of games to play: "))
-    compare_algorithms(num_games)
+    run_experiments()
