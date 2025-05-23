@@ -200,12 +200,12 @@ class ReversiBoard:
         print(f"* marks valid moves for {self.current_player == 1 and 'Black' or 'White'}")
 
 class ReversiPlayer:
-    def __init__(self):
+    def __init__(self, player_number):
+        self.player_number = player_number
         self.move_number = 0
         self.total_time = 0
         self.max_time_per_move = 0
         self.move_of_max_time = 0
-        pass
     
     def get_move(self, board: ReversiBoard):
         pass
@@ -230,8 +230,7 @@ class MinimaxPlayer(ReversiPlayer):
     AI player using Minimax algorithm with Alpha-Beta pruning.
     """
     def __init__(self, player_number, depth=4):
-        super().__init__()
-        self.player_number = player_number
+        super().__init__(player_number)
         self.depth = depth
         
         # Weights for the board evaluation
@@ -425,8 +424,7 @@ class MCTSPlayer(ReversiPlayer):
     AI player using Monte Carlo Tree Search.
     """
     def __init__(self, player_number, iterations=1000):
-        super().__init__()
-        self.player_number = player_number
+        super().__init__(player_number)
         self.iterations = iterations
     
     def get_move(self, board: ReversiBoard):
@@ -534,19 +532,61 @@ class ReversiGame:
         
         return self.winner, self.black_count, self.white_count
 
-def compare_algorithms(num_games=10, board_size=8):
+class CompareResult:
+    class AlgorithmStatistic:
+        def __init__(self, depth):
+            self.depth = depth
+            self.win = 0
+            self.win_rate = 0
+    
+    class PlayerStatistic:
+        def __init__(self, player: ReversiPlayer):
+            self.total_time = player.total_time
+            self.move_number = player.move_number
+            self.average_time = player.average_time()
+            self.max_time_per_move = player.max_time_per_move
+            self.move_of_max_time = player.move_of_max_time
+
+    class GameResult:
+        def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
+            check_player1_is_minimax = player1.__class__.__name__ == MinimaxPlayer.__name__
+
+            self.number = number
+            self.minimax_player = 1 if check_player1_is_minimax else 2
+            self.mcts_player = 2 if check_player1_is_minimax else 1
+            self.winner = winner
+            self.minimax = CompareResult.PlayerStatistic(player1 if check_player1_is_minimax else player2)
+            self.mcts = CompareResult.PlayerStatistic(player2 if check_player1_is_minimax else player1)
+
+    def __init__(self, num_games=10, board_size=8, minimax_depth = 3, mcts_itereation = 10):
+        self.num_games = num_games
+        self.board_size = board_size
+        self.draws = 0
+        self.minimax = CompareResult.AlgorithmStatistic(minimax_depth)
+        self.mcts = CompareResult.AlgorithmStatistic(mcts_itereation)
+        self.game: list[CompareResult.GameResult] = []
+    
+    def add_game_result(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
+        game_result = CompareResult.GameResult(number, player1, player2, winner)
+        self.game.append(game_result)
+    
+    def change_win_count(self, win, player_type = 'minimax'):
+        if player_type == 'minimax':
+            player: CompareResult.AlgorithmStatistic = self.minimax
+        else:
+            player: CompareResult.AlgorithmStatistic = self.mcts
+        
+        player.win = win
+        player.win_rate = win / self.num_games
+        
+
+def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itereation = 10):
     """Compare Minimax with Alpha-Beta pruning against Monte Carlo Tree Search."""
+    result = CompareResult(num_games, board_size, minimax_depth, mcts_itereation)
+
     minimax_wins = 0
     mcts_wins = 0
     draws = 0
-    
-    minimax_black_scores = []
-    minimax_white_scores = []
-    mcts_black_scores = []
-    mcts_white_scores = []
-    
-    minimax_times = []
-    mcts_times = []
     
     print(f"Playing {num_games} games...")
     
@@ -556,9 +596,7 @@ def compare_algorithms(num_games=10, board_size=8):
         mcts_player = MCTSPlayer(2, iterations=10)
         game1 = ReversiGame(minimax_player, mcts_player, board_size)
         
-        start_time = time.time()
-        winner, black_score, white_score = game1.play_game()
-        end_time = time.time()
+        winner, _, _ = game1.play_game()
         
         if winner == 1:
             minimax_wins += 1
@@ -566,27 +604,15 @@ def compare_algorithms(num_games=10, board_size=8):
             mcts_wins += 1
         else:
             draws += 1
-            
-        minimax_black_scores.append(black_score)
-        mcts_white_scores.append(white_score)
         
-        # Track time per move (approximate)
-        game_time = end_time - start_time
-        avg_moves = black_score + white_score - 4  # Subtract initial pieces
-        minimax_time = game_time / (avg_moves / 2)  # Time per Minimax move
-        mcts_time = game_time / (avg_moves / 2)     # Time per MCTS move
-        
-        minimax_times.append(minimax_time)
-        mcts_times.append(mcts_time)
-        
+        result.add_game_result(i, minimax_player, mcts_player, winner)
+
         # Play with MCTS as black (player 1)
         minimax_player = MinimaxPlayer(2, depth=3)
         mcts_player = MCTSPlayer(1, iterations=10)
         game2 = ReversiGame(mcts_player, minimax_player, board_size)
         
-        start_time = time.time()
-        winner, black_score, white_score = game2.play_game()
-        end_time = time.time()
+        winner, _, _ = game2.play_game()
         
         if winner == 2:
             minimax_wins += 1
@@ -594,33 +620,15 @@ def compare_algorithms(num_games=10, board_size=8):
             mcts_wins += 1
         else:
             draws += 1
-            
-        mcts_black_scores.append(black_score)
-        minimax_white_scores.append(white_score)
         
-        # Track time per move (approximate)
-        game_time = end_time - start_time
-        avg_moves = black_score + white_score - 4  # Subtract initial pieces
-        mcts_time = game_time / (avg_moves / 2)    # Time per MCTS move
-        minimax_time = game_time / (avg_moves / 2) # Time per Minimax move
-        
-        minimax_times.append(minimax_time)
-        mcts_times.append(mcts_time)
-    
-    print("\nResults:")
-    print(f"Minimax wins: {minimax_wins} ({minimax_wins / (2 * num_games) * 100:.1f}%)")
-    print(f"MCTS wins: {mcts_wins} ({mcts_wins / (2 * num_games) * 100:.1f}%)")
-    print(f"Draws: {draws} ({draws / (2 * num_games) * 100:.1f}%)")
-    
-    print("\nAverage scores:")
-    print(f"Minimax as Black: {sum(minimax_black_scores) / len(minimax_black_scores):.1f}")
-    print(f"Minimax as White: {sum(minimax_white_scores) / len(minimax_white_scores):.1f}")
-    print(f"MCTS as Black: {sum(mcts_black_scores) / len(mcts_black_scores):.1f}")
-    print(f"MCTS as White: {sum(mcts_white_scores) / len(mcts_white_scores):.1f}")
-    
-    print("\nAverage time per move (seconds):")
-    print(f"Minimax: {sum(minimax_times) / len(minimax_times):.3f}")
-    print(f"MCTS: {sum(mcts_times) / len(mcts_times):.3f}")
+        result.add_game_result(i+1, mcts_player, minimax_player, winner)
+
+    # Add win counts from Minimax and MCTS to result
+    result.change_win_count(minimax_wins, 'minimax')
+    result.change_win_count(mcts_wins, 'mcts')
+    result.draws = draws
+
+    return result
 
 # Main program
 if __name__ == "__main__":
