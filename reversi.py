@@ -594,7 +594,7 @@ class CompareResult:
 
 def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itereation = 10):
     """Compare Minimax with Alpha-Beta pruning against Monte Carlo Tree Search."""
-    result = CompareResult(num_games, board_size, minimax_depth, mcts_itereation)
+    result = CompareResult(num_games*2, board_size, minimax_depth, mcts_itereation)
 
     # Count number of wins for players and draws
     minimax_wins = 0
