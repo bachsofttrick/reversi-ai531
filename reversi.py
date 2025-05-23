@@ -601,15 +601,22 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
     mcts_wins = 0
     draws = 0
     
-    print(f"Playing {num_games*2} games...")
+    print(f"Playing {num_games*2} games of board size: {board_size}, Minimax depth: {minimax_depth}, MCTS iterations: {mcts_itereation}")
+
     
     for i in range(num_games):
         # Play with Minimax as black (player 1)
+        print(f"Game {i*2+1}: Minimax(Black) vs MCTS(White)")
         minimax_player = MinimaxPlayer(1, depth=3)
         mcts_player = MCTSPlayer(2, iterations=10)
         game1 = ReversiGame(minimax_player, mcts_player, board_size)
         winner, _, _ = game1.play_game()
         
+        # Debug info for game 1
+        print(f"  Winner: {winner} ({'Minimax' if winner == 1 else 'MCTS' if winner == 2 else 'Draw'})")
+        print(f"  Minimax - Time: {minimax_player.total_time:.3f}s, Moves: {minimax_player.move_number}, Avg: {minimax_player.average_time():.3f}s")
+        print(f"  MCTS    - Time: {mcts_player.total_time:.3f}s, Moves: {mcts_player.move_number}, Avg: {mcts_player.average_time():.3f}s")
+
         # Increase win
         if winner == 1:
             minimax_wins += 1
@@ -621,10 +628,16 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         result.add_game_result(i, minimax_player, mcts_player, winner)
 
         # Play with MCTS as black (player 1)
+        print(f"Game {i*2+2}: MCTS(Black) vs Minimax(White)")
         minimax_player = MinimaxPlayer(2, depth=3)
         mcts_player = MCTSPlayer(1, iterations=10)
         game2 = ReversiGame(mcts_player, minimax_player, board_size)
         winner, _, _ = game2.play_game()
+
+        # Debug info for game 2
+        print(f"  Winner: {winner} ({'MCTS' if winner == 1 else 'Minimax' if winner == 2 else 'Draw'})")
+        print(f"  MCTS    - Time: {mcts_player.total_time:.3f}s, Moves: {mcts_player.move_number}, Avg: {mcts_player.average_time():.3f}s")
+        print(f"  Minimax - Time: {minimax_player.total_time:.3f}s, Moves: {minimax_player.move_number}, Avg: {minimax_player.average_time():.3f}s")
         
         # Increase win
         if winner == 2:
@@ -635,6 +648,12 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
             draws += 1
         
         result.add_game_result(i+1, mcts_player, minimax_player, winner)
+
+    # Final summary
+    print(f"\nFINAL RESULTS after {num_games*2} games:")
+    print(f"Minimax wins: {minimax_wins} ({minimax_wins/(num_games*2)*100:.1f}%)")
+    print(f"MCTS wins: {mcts_wins} ({mcts_wins/(num_games*2)*100:.1f}%)")
+    print(f"Draws: {draws} ({draws/(num_games*2)*100:.1f}%)\n")
 
     # Add win counts from Minimax and MCTS to result
     result.change_win_count(minimax_wins, 'minimax')
@@ -653,7 +672,7 @@ def run_experiments(multiprocess=False):
     monte_carlo_iterations = [10, 20, 50, 100, 200, 500]
 
     # List to store all results
-    results_list = []
+    results_list: list[CompareResult] = []
 
     if multiprocess:
         # Use all available CPU cores
@@ -685,37 +704,48 @@ def run_experiments(multiprocess=False):
 
     return results_list
 
-def save_to_csv(results):
-    # Open a CSV file for writing
+def save_to_csv(results: list[CompareResult]):
+    """Save Reversi algorithm comparison results to CSV file."""
     with open(report_file, mode='w', newline='') as file:
         writer = csv.writer(file)
         
-        header = ["Puzzle #", "Difficulty", "# Initial cells", "Rules", "Cell Selection",
-                  "Solved", "Search Steps", "Backtrack Count", "Time (s)", "Difficulty by the rules used to solve"]
+        # Write header
+        header = [
+            "Board Size", "Total Games", "Draws", "Minimax Depth", "Minimax Wins", "Minimax Win Rate",
+            "MCTS Iterations", "MCTS Wins", "MCTS Win Rate",
+            "Game #", "Winner", "Minimax Player", "MCTS Player",
+            "Minimax Total Time", "Minimax Moves", "Minimax Avg Time", 
+            "Minimax Max Time Per Move", "Minimax Max Time Move",
+            "MCTS Total Time", "MCTS Moves", "MCTS Avg Time",
+            "MCTS Max Time Per Move", "MCTS Max Time Move"
+        ]
         writer.writerow(header)
-        '''
-        # Write each result in a row
-        for puzzle in results:
-            puzzle_number = puzzle["number"]
-            difficulty = puzzle["difficulty"]
-            puzzle_results = puzzle["results"]
-            difficulty_interference = puzzle["difficulty_interference"]
-
-            for r in puzzle_results:
-                row = [
-                    puzzle_number,
-                    difficulty,
-                    r["initial_filled"],
-                    r["rule"],
-                    r["cell_selection"],
-                    r["solved"],
-                    r["steps"],
-                    r["backtrack_count"],
-                    round(r["time"], 6),
-                    difficulty_interference
+        
+        # Write data for each CompareResult
+        for result in results:
+            # Overall statistics for each row
+            overall_stats = [
+                result.board_size, result.num_games, result.draws,
+                result.minimax.depth, result.minimax.win, result.minimax.win_rate,
+                result.mcts.depth, result.mcts.win, result.mcts.win_rate
+            ]
+            # Write individual game results
+            for game in result.game:
+                # Individual game data
+                game_data = [
+                    game.number, game.winner, game.minimax_player, game.mcts_player,
+                    round(game.minimax.total_time, 6), game.minimax.move_number, round(game.minimax.average_time, 6),
+                    round(game.minimax.max_time_per_move, 6), game.minimax.move_of_max_time,
+                    round(game.mcts.total_time, 6), game.mcts.move_number, round(game.mcts.average_time, 6),
+                    round(game.mcts.max_time_per_move, 6), game.mcts.move_of_max_time
                 ]
+                
+                # Combine arrays using unpacking
+                row = [*overall_stats, *game_data]
                 writer.writerow(row)
-        '''
+            
+            # Add empty row for separation between different result sets
+            writer.writerow([])
 
 def main():
     # Access global variable
@@ -730,7 +760,7 @@ def main():
     if args.debug != debug: debug = args.debug
 
     results = run_experiments(args.multi)
-    #save_to_csv(results)
+    save_to_csv(results)
 
 # Main program
 if __name__ == "__main__":

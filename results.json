@@ -1,12 +1,16 @@
 [
     {
+        "num_games": 10,
         "board_size": 4,
+        "draws": 0,
         "minimax": {
             "depth": 3,
+            "win": 0,
             "win_rate": 0.0
         },
         "monte_carlo": {
             "iteration": 10,
+            "win": 0,
             "win_rate": 0.0
         },
         "game": [
