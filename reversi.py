@@ -6,10 +6,12 @@ from copy import deepcopy
 import multiprocessing as mp
 import argparse
 import csv
+import json
 
 num_games = 5
 debug = False
 report_file = 'results.csv'
+minimax_weight_file = 'weights.json'
 
 class ReversiBoard:
     """
@@ -213,6 +215,7 @@ class ReversiPlayer:
         self.total_time = 0
         self.max_time_per_move = 0
         self.move_of_max_time = 0
+        
         # Node counting
         self.total_nodes_created = 0
         self.total_nodes_explored = 0
@@ -264,13 +267,14 @@ class ReversiPlayer:
     
     def average_explored_nodes_per_move(self):
         return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
-    
-
 
 class MinimaxPlayer(ReversiPlayer):
     """
     AI player using Minimax algorithm with Alpha-Beta pruning.
     """
+    # Weights available to all instace of MinimaxPlayer
+    WEIGHTS: dict[int, np.ndarray]
+
     def __init__(self, player_number, depth=4):
         super().__init__(player_number)
         self.depth = depth
@@ -278,21 +282,13 @@ class MinimaxPlayer(ReversiPlayer):
         # Node counting for current move
         self.nodes_created = 0
         self.nodes_explored = 0
-        
-        # Weights for the board evaluation
-        self.weights = np.array([
-            [120, -20, 20,  5,  5, 20, -20, 120],
-            [-20, -40, -5, -5, -5, -5, -40, -20],
-            [ 20,  -5, 15,  3,  3, 15,  -5,  20],
-            [  5,  -5,  3,  3,  3,  3,  -5,   5],
-            [  5,  -5,  3,  3,  3,  3,  -5,   5],
-            [ 20,  -5, 15,  3,  3, 15,  -5,  20],
-            [-20, -40, -5, -5, -5, -5, -40, -20],
-            [120, -20, 20,  5,  5, 20, -20, 120]
-        ])
     
     def get_move(self, board: ReversiBoard):
         """Get the best move using Minimax with Alpha-Beta pruning."""
+        # Get the appropriate weights for the board size
+        # Weights for the board evaluation
+        self.weights = MinimaxPlayer.WEIGHTS[board.size]
+
         # Reset node counter for this move
         self.nodes_created = 0
         self.nodes_explored = 0
@@ -843,6 +839,20 @@ def save_to_csv(results: list[CompareResult]):
             # Add empty row for separation between different result sets
             writer.writerow([])
 
+
+def import_weights_json():
+    """
+    Load board weights from a JSON file and convert each board size entry into a NumPy array.
+    
+    Returns:
+        dict[int, np.ndarray]: Dictionary mapping board size to its weight matrix as a NumPy array.
+    """
+    with open(minimax_weight_file, "r") as f:
+        data = json.load(f)
+
+    weights = {int(size): np.array(matrix) for size, matrix in data.items()}
+    MinimaxPlayer.WEIGHTS = weights
+
 def main():
     # Access global variable
     global debug
@@ -855,6 +865,7 @@ def main():
     # Change variables if they are offered in arguments
     if args.debug != debug: debug = args.debug
 
+    import_weights_json()
     results = run_experiments(args.multi)
     save_to_csv(results)
 
