@@ -213,7 +213,7 @@ class ReversiPlayer:
         self.player_number = player_number
         self.move_number = 0
         self.total_time = 0
-        self.max_time_per_move = 0
+        self.max_time_to_make_move = 0
         self.move_of_max_time = 0
         
         # Node counting
@@ -245,8 +245,8 @@ class ReversiPlayer:
         self.nodes_created_per_move.append(nodes_created_this_move)
         self.nodes_explored_per_move.append(nodes_explored_this_move)
         
-        if total_time > self.max_time_per_move:
-            self.max_time_per_move = total_time
+        if total_time > self.max_time_to_make_move:
+            self.max_time_to_make_move = total_time
             self.move_of_max_time = self.move_number
             
         if nodes_created_this_move > self.max_nodes_created_per_move:
@@ -649,7 +649,7 @@ class CompareResult:
                 self.total_time = player.total_time
                 self.move_number = player.move_number
                 self.average_time = player.average_time()
-                self.max_time_per_move = player.max_time_per_move
+                self.max_time_per_move = player.max_time_to_make_move
                 self.move_of_max_time = player.move_of_max_time
         
         def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
@@ -760,7 +760,7 @@ def run_experiments(multiprocess=False):
     """
     #board_sizes = [4, 6, 8, 10, 12, 14, 16]
     board_sizes = [8]
-    minimax_depths = [3, 4, 5, 6, 7, 8]
+    minimax_depths = [3, 4, 5, 6]
     monte_carlo_iterations = [10, 20, 50, 100, 200, 500]
 
     # List to store all results
