@@ -10,6 +10,7 @@ import json
 
 num_games = 5
 debug = False
+print_solution = False
 report_file = 'results.csv'
 minimax_weight_file = 'weights.json'
 
@@ -168,9 +169,6 @@ class ReversiBoard:
         Args:
             highlighted_pos: Optional (row, col) tuple to highlight a position
         """
-        # Clear the screen first (works on most terminals)
-        print("\033c", end="")
-        
         # Get valid moves for current player to mark with asterisk
         valid_moves = self.get_valid_moves()
         
@@ -190,8 +188,6 @@ class ReversiBoard:
                     cell = "1"  # Black
                 elif self.board[i][j] == 2:
                     cell = "0"  # White
-                elif (i, j) in valid_moves:
-                    cell = "*"  # Valid move
                 else:
                     cell = " "  # Empty
                 
@@ -206,7 +202,6 @@ class ReversiBoard:
         
         black_count, white_count = self.count_pieces()
         print(f"1: Black: {black_count}  |  0: White: {white_count}")
-        print(f"* marks valid moves for {self.current_player == 1 and 'Black' or 'White'}")
 
 class ReversiPlayer:
     def __init__(self, player_number):
@@ -607,23 +602,16 @@ class ReversiGame:
                 player = self.players[self.board.current_player]
                 move = player.get_move_timed(self.board)
                 self.board.make_move(move[0], move[1])
-                
-                if self.print_board:
-                    print(f"Player {self.board.get_opponent(self.board.current_player)} plays {move}")
-                    self.board.print_board()
-                    print()
             else:
                 # No valid moves, switch players
                 self.board.current_player = 3 - self.board.current_player
-                if self.print_board:
-                    print(f"Player {self.board.get_opponent(self.board.current_player)} has no valid moves. Passing...")
         
         self.winner = self.board.get_winner()
         self.black_count, self.white_count = self.board.count_pieces()
         
         if self.print_board:
             print("Game over!")
-            print(f"Final score - Black: {self.black_count}, White: {self.white_count}")
+            self.board.print_board()
             if self.winner == 0:
                 print("It's a draw!")
             else:
@@ -693,21 +681,23 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
     mcts_wins = 0
     draws = 0
     
-    print(f"Playing {num_games*2} games of board size: {board_size}, Minimax depth: {minimax_depth}, MCTS iterations: {mcts_itereation}")
+    print(f"Playing {num_games*2} games of (board size, Minimax depth, MCTS iterations): ({board_size},{minimax_depth},{mcts_itereation})")
 
     
     for i in range(num_games):
         # Play with Minimax as black (player 1)
+        print(f"\n({board_size},{minimax_depth},{mcts_itereation})")
         print(f"Game {i*2+1}: Minimax(Black) vs MCTS(White)")
         minimax_player = MinimaxPlayer(1, minimax_depth)
         mcts_player = MCTSPlayer(2, mcts_itereation)
-        game1 = ReversiGame(minimax_player, mcts_player, board_size)
+        game1 = ReversiGame(minimax_player, mcts_player, board_size, print_solution)
         winner, _, _ = game1.play_game()
         
         # Debug info for game 1
-        print(f"  Winner: {winner} ({'Minimax' if winner == 1 else 'MCTS' if winner == 2 else 'Draw'})")
-        print(f"  Minimax - Time: {minimax_player.total_time:.3f}s, Moves: {minimax_player.move_number}, Avg: {minimax_player.average_time():.3f}s")
-        print(f"  MCTS    - Time: {mcts_player.total_time:.3f}s, Moves: {mcts_player.move_number}, Avg: {mcts_player.average_time():.3f}s")
+        if debug:
+            print(f"  Winner: {winner} ({'Minimax' if winner == 1 else 'MCTS' if winner == 2 else 'Draw'})")
+            print(f"  Minimax - Time: {minimax_player.total_time:.3f}s, Moves: {minimax_player.move_number}, Avg: {minimax_player.average_time():.3f}s")
+            print(f"  MCTS    - Time: {mcts_player.total_time:.3f}s, Moves: {mcts_player.move_number}, Avg: {mcts_player.average_time():.3f}s")
 
         # Increase win
         if winner == 1:
@@ -720,16 +710,18 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         result.add_game_result(i, minimax_player, mcts_player, winner)
 
         # Play with MCTS as black (player 1)
+        print(f"\n({board_size},{minimax_depth},{mcts_itereation})")
         print(f"Game {i*2+2}: MCTS(Black) vs Minimax(White)")
         minimax_player = MinimaxPlayer(2, minimax_depth)
         mcts_player = MCTSPlayer(1, mcts_itereation)
-        game2 = ReversiGame(mcts_player, minimax_player, board_size)
+        game2 = ReversiGame(mcts_player, minimax_player, board_size, print_solution)
         winner, _, _ = game2.play_game()
 
         # Debug info for game 2
-        print(f"  Winner: {winner} ({'MCTS' if winner == 1 else 'Minimax' if winner == 2 else 'Draw'})")
-        print(f"  MCTS    - Time: {mcts_player.total_time:.3f}s, Moves: {mcts_player.move_number}, Avg: {mcts_player.average_time():.3f}s")
-        print(f"  Minimax - Time: {minimax_player.total_time:.3f}s, Moves: {minimax_player.move_number}, Avg: {minimax_player.average_time():.3f}s")
+        if debug:
+            print(f"  Winner: {winner} ({'MCTS' if winner == 1 else 'Minimax' if winner == 2 else 'Draw'})")
+            print(f"  MCTS    - Time: {mcts_player.total_time:.3f}s, Moves: {mcts_player.move_number}, Avg: {mcts_player.average_time():.3f}s")
+            print(f"  Minimax - Time: {minimax_player.total_time:.3f}s, Moves: {minimax_player.move_number}, Avg: {minimax_player.average_time():.3f}s")
         
         # Increase win
         if winner == 2:
@@ -742,7 +734,8 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         result.add_game_result(i+1, mcts_player, minimax_player, winner)
 
     # Final summary
-    print(f"\nFINAL RESULTS after {num_games*2} games:")
+    print(f"\n({board_size},{minimax_depth},{mcts_itereation})")
+    print(f"FINAL RESULTS after {num_games*2} games:")
     print(f"Minimax wins: {minimax_wins} ({minimax_wins/(num_games*2)*100:.1f}%)")
     print(f"MCTS wins: {mcts_wins} ({mcts_wins/(num_games*2)*100:.1f}%)")
     print(f"Draws: {draws} ({draws/(num_games*2)*100:.1f}%)\n")
@@ -758,10 +751,9 @@ def run_experiments(multiprocess=False):
     """
     Test Minimax vs Monte Carlo across different board sizes and parameters.
     """
-    #board_sizes = [4, 6, 8, 10, 12, 14, 16]
-    board_sizes = [8]
+    board_sizes = [4, 6, 8, 10, 12, 14, 16]
     minimax_depths = [3, 4, 5, 6]
-    monte_carlo_iterations = [10, 20, 50, 100, 200, 500]
+    monte_carlo_iterations = [10, 20, 50, 100, 200, 500, 1000]
 
     # List to store all results
     results_list: list[CompareResult] = []
@@ -855,15 +847,17 @@ def import_weights_json():
 
 def main():
     # Access global variable
-    global debug
+    global debug, print_solution
 
     parser = argparse.ArgumentParser(description="Reversi: MInimax vs Monte Carlo")
     parser.add_argument('--multi', action='store_true', help="Run in multiprocessing mode")
+    parser.add_argument('--print-solution', action='store_true', help="Print the solved board")
     parser.add_argument('--debug', action='store_true', help="Enable debug output")
 
     args = parser.parse_args()
     # Change variables if they are offered in arguments
     if args.debug != debug: debug = args.debug
+    if args.print_solution != print_solution: print_solution = args.print_solution
 
     import_weights_json()
     results = run_experiments(args.multi)
