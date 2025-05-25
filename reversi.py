@@ -213,23 +213,58 @@ class ReversiPlayer:
         self.total_time = 0
         self.max_time_per_move = 0
         self.move_of_max_time = 0
+        # Node counting
+        self.total_nodes_created = 0
+        self.total_nodes_explored = 0
+        self.nodes_created_per_move = []
+        self.nodes_explored_per_move = []
+        self.max_nodes_created_per_move = 0
+        self.move_with_max_nodes_created = 0
+        self.max_nodes_explored_per_move = 0
+        self.move_with_max_nodes_explored = 0
     
     def get_move(self, board: ReversiBoard):
         pass
 
     def get_move_timed(self, board: ReversiBoard):
+        nodes_created_before = self.total_nodes_created
+        nodes_explored_before = self.total_nodes_explored
+        
         start_time = time.time()
         move = self.get_move(board)
         total_time = time.time() - start_time
+
+        nodes_created_this_move = self.total_nodes_created - nodes_created_before
+        nodes_explored_this_move = self.total_nodes_explored - nodes_explored_before
+        
         self.total_time += total_time
         self.move_number += 1
+        self.nodes_created_per_move.append(nodes_created_this_move)
+        self.nodes_explored_per_move.append(nodes_explored_this_move)
+        
         if total_time > self.max_time_per_move:
             self.max_time_per_move = total_time
             self.move_of_max_time = self.move_number
+            
+        if nodes_created_this_move > self.max_nodes_created_per_move:
+            self.max_nodes_created_per_move = nodes_created_this_move
+            self.move_with_max_nodes_created = self.move_number
+        
+        if nodes_explored_this_move > self.max_nodes_explored_per_move:
+            self.max_nodes_explored_per_move = nodes_explored_this_move
+            self.move_with_max_nodes_explored = self.move_number
+            
         return move
     
     def average_time(self):
         return self.total_time / self.move_number if self.move_number > 0 else 0
+    
+    def average_created_nodes_per_move(self):
+        return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
+    
+    def average_explored_nodes_per_move(self):
+        return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
+    
 
 
 class MinimaxPlayer(ReversiPlayer):
@@ -239,6 +274,10 @@ class MinimaxPlayer(ReversiPlayer):
     def __init__(self, player_number, depth=4):
         super().__init__(player_number)
         self.depth = depth
+        
+        # Node counting for current move
+        self.nodes_created = 0
+        self.nodes_explored = 0
         
         # Weights for the board evaluation
         self.weights = np.array([
@@ -254,13 +293,23 @@ class MinimaxPlayer(ReversiPlayer):
     
     def get_move(self, board: ReversiBoard):
         """Get the best move using Minimax with Alpha-Beta pruning."""
+        # Reset node counter for this move
+        self.nodes_created = 0
+        self.nodes_explored = 0
+        
         valid_moves = board.get_valid_moves(self.player_number)
         
         if not valid_moves:
             return None
         
+        # Count the root node
+        self.nodes_created += 1
+        self.nodes_explored += 1
+
         # If there's only one valid move, return it immediately
         if len(valid_moves) == 1:
+            self.total_nodes_created += self.nodes_created
+            self.total_nodes_explored += self.nodes_explored
             return valid_moves[0]
         
         best_value = float('-inf')
@@ -271,6 +320,8 @@ class MinimaxPlayer(ReversiPlayer):
         for move in valid_moves:
             # Make a copy of the board and make the move
             board_copy = board.copy()
+            # Count the board copy as a node
+            self.nodes_created += 1
             board_copy.make_move(move[0], move[1], self.player_number)
             
             # Get the value of this move
@@ -281,6 +332,10 @@ class MinimaxPlayer(ReversiPlayer):
                 best_move = move
                 
             alpha = max(alpha, best_value)
+        
+        # Update total nodes
+        self.total_nodes_created += self.nodes_created
+        self.total_nodes_explored += self.nodes_explored
         
         return best_move
     
@@ -298,6 +353,9 @@ class MinimaxPlayer(ReversiPlayer):
         Returns:
             The score for the current board state
         """
+          # Count each node exploration
+        self.nodes_explored += 1
+        
         if depth == 0 or board.is_game_over():
             return self.evaluate(board)
         
@@ -314,23 +372,27 @@ class MinimaxPlayer(ReversiPlayer):
             max_eval = float('-inf')
             for move in valid_moves:
                 board_copy = board.copy()
+                # Count the board copy as a node
+                self.nodes_created += 1
                 board_copy.make_move(move[0], move[1], current_player)
                 eval = self.minimax(board_copy, depth - 1, alpha, beta, False)
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
-                    break  # Beta cutoff
+                    break  # Beta cutoff - nodes after this aren't explored
             return max_eval
         else:
             min_eval = float('inf')
             for move in valid_moves:
                 board_copy = board.copy()
+                # Count the board copy as a node
+                self.nodes_created += 1
                 board_copy.make_move(move[0], move[1], current_player)
                 eval = self.minimax(board_copy, depth - 1, alpha, beta, True)
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
-                    break  # Alpha cutoff
+                    break  # Alpha cutoff - nodes after this aren't explored
             return min_eval
     
     def evaluate(self, board: ReversiBoard):
@@ -433,16 +495,31 @@ class MCTSPlayer(ReversiPlayer):
     def __init__(self, player_number, iterations=1000):
         super().__init__(player_number)
         self.iterations = iterations
+        
+        # Node counting for current move
+        self.nodes_explored = 0
+        self.tree_nodes_created = 0  # Nodes actually added to the tree
+        self.simulation_nodes = 0     # Nodes explored during simulations
     
     def get_move(self, board: ReversiBoard):
         """Get the best move using Monte Carlo Tree Search."""
+        # Reset counters for this move
+        self.nodes_explored = 0
+        self.tree_nodes_created = 0
+        self.simulation_nodes = 0
+        
         valid_moves = board.get_valid_moves(self.player_number)
         
         if not valid_moves:
             return None
         
+        # Count the root node
+        self.nodes_explored = 1
+        
         # If there's only one valid move, return it immediately
         if len(valid_moves) == 1:
+            self.nodes_explored = 1
+            self.total_nodes_explored += self.nodes_explored
             return valid_moves[0]
         
         # Create the root node
@@ -450,21 +527,29 @@ class MCTSPlayer(ReversiPlayer):
         # Make sure it's our turn
         board_copy.current_player = self.player_number
         root = MCTSPlayer.MonteCarloNode(board_copy)
+        self.tree_nodes_created += 1  # Count the root node
         
         # Run MCTS iterations
         for _ in range(self.iterations):
             # Selection: Select a node to expand
             node = root
+            path_length = 0
+            
             while node.untried_moves == [] and node.children:
                 node = node.select_child()
+                path_length += 1
             
             # Expansion: Add a new child node
             if node.untried_moves:
                 move = random.choice(node.untried_moves)
                 node = node.add_child(move)
+                self.tree_nodes_created += 1
+                path_length += 1
             
             # Simulation: Play a random game from this node
             board_copy = node.board.copy()
+            simulation_moves = 0
+            
             while not board_copy.is_game_over():
                 valid_moves = board_copy.get_valid_moves()
                 if not valid_moves:
@@ -474,9 +559,14 @@ class MCTSPlayer(ReversiPlayer):
                 
                 random_move = random.choice(valid_moves)
                 board_copy.make_move(random_move[0], random_move[1])
+                simulation_moves += 1
+            
+            self.simulation_nodes += simulation_moves
             
             # Backpropagation: Update all nodes in the path
             winner = board_copy.get_winner()
+            backprop_nodes = 0
+            
             while node:
                 if winner == self.player_number:
                     result = 1.0  # We won
@@ -487,6 +577,12 @@ class MCTSPlayer(ReversiPlayer):
                 
                 node.update(result)
                 node = node.parent
+                backprop_nodes += 1
+        
+        # Count total nodes explored this move
+        # Tree nodes + simulation nodes (simulation nodes already counted above)
+        self.nodes_explored = self.tree_nodes_created + self.simulation_nodes
+        self.total_nodes_explored += self.nodes_explored
         
         # Choose the move with the highest number of visits
         best_visits = -1
