@@ -1,0 +1,25 @@
+[
+    {
+        "number": 1,
+        "board_size": 4,
+        "minimax_depth": 3,
+        "mcts_iteration": 10,
+        "minimax_player": 1,
+        "monte_carlo_player": 2,
+        "winner": 1,
+        "minimax": {
+            "total_time": 0.0,
+            "move_number": 0,
+            "average_time": 0.0,
+            "max_time_per_move": 0.0,
+            "move_of_max_time": 0
+        },
+        "monte_carlo": {
+            "total_time": 0.0,
+            "move_number": 0,
+            "average_time": 0.0,
+            "max_time_per_move": 0.0,
+            "move_of_max_time": 0
+        }
+    }
+]

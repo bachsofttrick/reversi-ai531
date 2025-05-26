@@ -12,6 +12,7 @@ num_games = 5
 debug = False
 print_solution = False
 report_file = 'results.csv'
+report_node_file = 'results_node.csv'
 minimax_weight_file = 'weights.json'
 
 class ReversiBoard:
@@ -209,16 +210,16 @@ class ReversiPlayer:
         self.move_number = 0
         self.total_time = 0
         self.max_time_to_make_move = 0
-        self.move_of_max_time = 0
+        self.move_with_max_time = 0
         
         # Node counting
         self.total_nodes_created = 0
         self.total_nodes_explored = 0
         self.nodes_created_per_move = []
         self.nodes_explored_per_move = []
-        self.max_nodes_created_per_move = 0
+        self.max_nodes_created_in_a_move = 0
         self.move_with_max_nodes_created = 0
-        self.max_nodes_explored_per_move = 0
+        self.max_nodes_explored_in_a_move = 0
         self.move_with_max_nodes_explored = 0
     
     def get_move(self, board: ReversiBoard):
@@ -242,14 +243,14 @@ class ReversiPlayer:
         
         if total_time > self.max_time_to_make_move:
             self.max_time_to_make_move = total_time
-            self.move_of_max_time = self.move_number
+            self.move_with_max_time = self.move_number
             
-        if nodes_created_this_move > self.max_nodes_created_per_move:
-            self.max_nodes_created_per_move = nodes_created_this_move
+        if nodes_created_this_move > self.max_nodes_created_in_a_move:
+            self.max_nodes_created_in_a_move = nodes_created_this_move
             self.move_with_max_nodes_created = self.move_number
         
-        if nodes_explored_this_move > self.max_nodes_explored_per_move:
-            self.max_nodes_explored_per_move = nodes_explored_this_move
+        if nodes_explored_this_move > self.max_nodes_explored_in_a_move:
+            self.max_nodes_explored_in_a_move = nodes_explored_this_move
             self.move_with_max_nodes_explored = self.move_number
             
         return move
@@ -637,8 +638,18 @@ class CompareResult:
                 self.total_time = player.total_time
                 self.move_number = player.move_number
                 self.average_time = player.average_time()
-                self.max_time_per_move = player.max_time_to_make_move
-                self.move_of_max_time = player.move_of_max_time
+                self.max_time_to_make_move = player.max_time_to_make_move
+                self.move_with_max_time = player.move_with_max_time
+
+                # Node counting
+                self.total_nodes_created = player.total_nodes_created
+                self.total_nodes_explored = player.total_nodes_explored
+                self.max_nodes_created_in_a_move = player.max_nodes_created_in_a_move
+                self.move_with_max_nodes_created = player.move_with_max_nodes_created
+                self.max_nodes_explored_in_a_move = player.max_nodes_explored_in_a_move
+                self.move_with_max_nodes_explored = player.move_with_max_nodes_explored
+                self.average_nodes_created = player.average_created_nodes_per_move()
+                self.average_nodes_explored = player.average_explored_nodes_per_move()
         
         def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
             check_player1_is_minimax = player1.__class__.__name__ == MinimaxPlayer.__name__
@@ -797,9 +808,12 @@ def save_to_csv(results: list[CompareResult]):
         header = [
             "Board Size", "Total Games", "Draws", "Minimax Depth", "Minimax Wins", "Minimax Win Rate",
             "MCTS Iterations", "MCTS Wins", "MCTS Win Rate",
+            
             "Game #", "Winner", "Minimax Player", "MCTS Player",
+
             "Minimax Total Time", "Minimax Moves", "Minimax Avg Time", 
             "Minimax Max Time Per Move", "Minimax Max Time Move",
+
             "MCTS Total Time", "MCTS Moves", "MCTS Avg Time",
             "MCTS Max Time Per Move", "MCTS Max Time Move"
         ]
@@ -818,10 +832,12 @@ def save_to_csv(results: list[CompareResult]):
                 # Individual game data
                 game_data = [
                     game.number, game.winner, game.minimax_player, game.mcts_player,
+
                     round(game.minimax.total_time, 6), game.minimax.move_number, round(game.minimax.average_time, 6),
-                    round(game.minimax.max_time_per_move, 6), game.minimax.move_of_max_time,
+                    round(game.minimax.max_time_to_make_move, 6), game.minimax.move_with_max_time,
+
                     round(game.mcts.total_time, 6), game.mcts.move_number, round(game.mcts.average_time, 6),
-                    round(game.mcts.max_time_per_move, 6), game.mcts.move_of_max_time
+                    round(game.mcts.max_time_to_make_move, 6), game.mcts.move_with_max_time
                 ]
                 
                 # Combine arrays using unpacking
@@ -831,6 +847,60 @@ def save_to_csv(results: list[CompareResult]):
             # Add empty row for separation between different result sets
             writer.writerow([])
 
+    """Save Reversi algorithm node comparison results to CSV file."""
+    with open(report_node_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        
+        # Write header
+        header = [
+            "Board Size", "Minimax Depth",
+            "MCTS Iterations",
+            
+            "Game #",
+
+            "Minimax Total Nodes Created", "Minimax Max Nodes Created in a Move",
+            "Minimax Max Nodes Created Move", "Minimax Avg Nodes Created",
+            "Minimax Total Nodes Explored", "Minimax Max Nodes Explored in a Move",
+            "Minimax Max Nodes Explored Move", "Minimax Avg Nodes Explored",
+
+            "MCTS Total Nodes Created", "MCTS Max Nodes Created in a Move",
+            "MCTS Max Nodes Created Move", "MCTS Avg Nodes Created",
+            "MCTS Total Nodes Explored", "MCTS Max Nodes Explored in a Move",
+            "MCTS Max Nodes Explored Move", "MCTS Avg Nodes Explored",
+        ]
+        writer.writerow(header)
+        
+        # Write data for each CompareResult
+        for result in results:
+            # Overall statistics for each row
+            overall_stats = [
+                result.board_size,
+                result.minimax.depth,
+                result.mcts.depth
+            ]
+            # Write individual game results
+            for game in result.game:
+                # Individual game data
+                game_data = [
+                    game.number,
+
+                    game.minimax.total_nodes_created, game.minimax.max_nodes_created_in_a_move,
+                    game.minimax.move_with_max_nodes_created, game.minimax.average_nodes_created,
+                    game.minimax.total_nodes_explored, game.minimax.max_nodes_explored_in_a_move,
+                    game.minimax.move_with_max_nodes_explored, game.minimax.average_nodes_explored,
+
+                    game.mcts.total_nodes_created, game.mcts.max_nodes_created_in_a_move,
+                    game.mcts.move_with_max_nodes_created, game.mcts.average_nodes_created,
+                    game.mcts.total_nodes_explored, game.mcts.max_nodes_explored_in_a_move,
+                    game.mcts.move_with_max_nodes_explored, game.mcts.average_nodes_explored
+                ]
+                
+                # Combine arrays using unpacking
+                row = [*overall_stats, *game_data]
+                writer.writerow(row)
+            
+            # Add empty row for separation between different result sets
+            writer.writerow([])
 
 def import_weights_json():
     """
