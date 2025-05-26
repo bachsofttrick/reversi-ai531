@@ -32,7 +32,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         minimax_player = MinimaxPlayer(1, minimax_depth)
         mcts_player = MCTSPlayer(2, mcts_itereation)
         game1 = ReversiGame(minimax_player, mcts_player, board_size, print_solution, show_progress)
-        winner, _, _ = game1.play_game(stop_early)
+        winner, playing_too_long = game1.play_game(stop_early)
         
         # Debug info for game 1
         if debug:
@@ -48,7 +48,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         else:
             draws += 1
         
-        result.add_game_result(i, minimax_player, mcts_player, winner)
+        result.add_game_result(i, minimax_player, mcts_player, winner, playing_too_long)
 
         # Play with MCTS as black (player 1)
         print(f"\n({board_size},{minimax_depth},{mcts_itereation})", end=' ')
@@ -56,7 +56,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         minimax_player = MinimaxPlayer(2, minimax_depth)
         mcts_player = MCTSPlayer(1, mcts_itereation)
         game2 = ReversiGame(mcts_player, minimax_player, board_size, print_solution, show_progress)
-        winner, _, _ = game2.play_game(stop_early)
+        winner, playing_too_long = game2.play_game(stop_early)
 
         # Debug info for game 2
         if debug:
@@ -72,7 +72,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         else:
             draws += 1
         
-        result.add_game_result(i+1, mcts_player, minimax_player, winner)
+        result.add_game_result(i+1, mcts_player, minimax_player, winner, playing_too_long)
 
     # Final summary
     print(f"\n({board_size},{minimax_depth},{mcts_itereation})")
@@ -139,7 +139,7 @@ def save_to_csv(results: list[CompareResult]):
             "Board Size", "Total Games", "Draws", "Minimax Depth", "Minimax Wins", "Minimax Win Rate",
             "MCTS Iterations", "MCTS Wins", "MCTS Win Rate",
             
-            "Game #", "Winner", "Minimax Player", "MCTS Player",
+            "Game #", "Winner", "Minimax Player", "MCTS Player", "Stop Early",
 
             "Minimax Total Time", "Minimax Moves", "Minimax Avg Time", 
             "Minimax Max Time Per Move", "Minimax Max Time Move",
@@ -161,7 +161,7 @@ def save_to_csv(results: list[CompareResult]):
             for game in result.game:
                 # Individual game data
                 game_data = [
-                    game.number, game.winner, game.minimax_player, game.mcts_player,
+                    game.number, game.winner, game.minimax_player, game.mcts_player, game.playing_too_long,
 
                     round(game.minimax.total_time, 6), game.minimax.move_number, round(game.minimax.average_time, 6),
                     round(game.minimax.max_time_to_make_move, 6), game.minimax.move_with_max_time,

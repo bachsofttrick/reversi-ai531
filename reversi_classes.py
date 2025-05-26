@@ -212,6 +212,7 @@ class ReversiPlayer:
         self.total_time = 0
         self.max_time_to_make_move = 0
         self.move_with_max_time = 0
+        self.total_time_to_stop = 3600
         
         # Node counting
         self.total_nodes_created = 0
@@ -265,8 +266,11 @@ class ReversiPlayer:
     def average_explored_nodes_per_move(self):
         return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
     
-    def check_player_is_minimax(self):
+    def is_using_minimax(self):
         return self.__class__.__name__ == MinimaxPlayer.__name__
+    
+    def is_playing_too_long(self):
+        return self.total_time > self.total_time_to_stop
 
 class MinimaxPlayer(ReversiPlayer):
     """
@@ -601,8 +605,7 @@ class ReversiGame:
         self.white_count = 0
         self.show_progress = show_progress
         self.progress = 0
-        self.total_time_to_stop = 3600
-        if player1.check_player_is_minimax():
+        if player1.is_using_minimax():
             self.minimax_depth = player1.depth
             self.mcts_iteration = player2.iterations
         else:
@@ -611,6 +614,8 @@ class ReversiGame:
 
     def play_game(self, stop_early=False):
         """Play a game between two AI players."""
+        playing_too_long = False
+
         while not self.board.is_game_over():
             if self.show_progress and self.progress % 5 == 0:
                 print(f"\n({self.board.size},{self.minimax_depth},{self.mcts_iteration}) {self.progress}%")
@@ -619,7 +624,8 @@ class ReversiGame:
                 player = self.players[self.board.current_player]
 
                 # Stop playing when the game goes on too long
-                if stop_early and player.total_time > self.total_time_to_stop:
+                playing_too_long = stop_early and player.is_playing_too_long()
+                if playing_too_long:
                     print(f"\n({self.board.size},{self.minimax_depth},{self.mcts_iteration}) A player's timer has run out.")
                     break
 
@@ -642,7 +648,7 @@ class ReversiGame:
             else:
                 print(f"Player {self.winner} wins!")
         
-        return self.winner, self.black_count, self.white_count
+        return self.winner, playing_too_long
 
 class CompareResult:
     """Result of the Reversi game to print to csv."""
@@ -675,13 +681,14 @@ class CompareResult:
                 self.average_nodes_created = player.average_created_nodes_per_move()
                 self.average_nodes_explored = player.average_explored_nodes_per_move()
         
-        def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
-            check_player1_is_minimax = player1.check_player_is_minimax()
+        def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner, playing_too_long):
+            check_player1_is_minimax = player1.is_using_minimax()
 
             self.number = number
             self.minimax_player = 1 if check_player1_is_minimax else 2
             self.mcts_player = 2 if check_player1_is_minimax else 1
             self.winner = winner
+            self.playing_too_long = playing_too_long
             self.minimax = CompareResult.GameResult.PlayerStatistic(player1 if check_player1_is_minimax else player2)
             self.mcts = CompareResult.GameResult.PlayerStatistic(player2 if check_player1_is_minimax else player1)
 
@@ -693,8 +700,8 @@ class CompareResult:
         self.mcts = CompareResult.AlgorithmStatistic(mcts_itereation)
         self.game: list[CompareResult.GameResult] = []
     
-    def add_game_result(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
-        game_result = CompareResult.GameResult(number, player1, player2, winner)
+    def add_game_result(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner, playing_too_long):
+        game_result = CompareResult.GameResult(number, player1, player2, winner, playing_too_long)
         self.game.append(game_result)
     
     def change_win_count(self, win, player_type = 'minimax'):
