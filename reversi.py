@@ -87,13 +87,18 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
 
     return result
 
-def run_experiments(multiprocess=False):
+def run_experiments(multiprocess=False, demo_mode=False):
     """
     Test Minimax vs Monte Carlo across different board sizes and parameters.
     """
-    board_sizes = [4]
-    minimax_depths = [3]
-    monte_carlo_iterations = [10]
+    board_sizes = [4, 6, 8, 10, 12, 14, 16]
+    minimax_depths = [3, 4, 5, 6]
+    monte_carlo_iterations = [10, 20, 50, 100, 200, 500, 1000]
+
+    if demo_mode:
+        board_sizes = [4]
+        minimax_depths = [3]
+        monte_carlo_iterations = [10]
 
     # List to store all results
     results_list: list[CompareResult] = []
