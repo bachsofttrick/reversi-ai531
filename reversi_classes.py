@@ -193,6 +193,18 @@ class ReversiBoard:
         black_count, white_count = self.count_pieces()
         print(f"1: Black: {black_count}  |  0: White: {white_count}")
 
+    def game_progress(self, move_number):
+        """
+        In Reversi:
+        The board is N x N (e.g., 8x8).
+        There are N² total squares.
+        The game starts with 4 disks already on the board.
+        So there are N² - 4 playable moves.
+        Multiply by 2 because it keeps finishing at 50%
+        """
+        progress = (move_number / (self.size ** 2 - 4)) * 100 * 2
+        return progress if progress <= 100 else 100
+
 class ReversiPlayer:
     def __init__(self, player_number):
         self.player_number = player_number
@@ -252,6 +264,9 @@ class ReversiPlayer:
     
     def average_explored_nodes_per_move(self):
         return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
+    
+    def check_player_is_minimax(self):
+        return self.__class__.__name__ == MinimaxPlayer.__name__
 
 class MinimaxPlayer(ReversiPlayer):
     """
@@ -577,21 +592,34 @@ class MCTSPlayer(ReversiPlayer):
         return best_move
 
 class ReversiGame:
-    def __init__(self, player1: ReversiPlayer, player2: ReversiPlayer, board_size=8, print_board=False):
+    def __init__(self, player1: ReversiPlayer, player2: ReversiPlayer, board_size=8, print_board=False, show_progress=False):
         self.board = ReversiBoard(board_size)
         self.players = {1: player1, 2: player2}
         self.print_board = print_board
         self.winner = 0
         self.black_count = 0
         self.white_count = 0
+        self.show_progress = show_progress
+        self.progress = 0
+        if player1.check_player_is_minimax():
+            self.minimax_depth = player1.depth
+            self.mcts_iteration = player2.iterations
+        else:
+            self.minimax_depth = player2.depth
+            self.mcts_iteration = player1.iterations
 
     def play_game(self):
         """Play a game between two AI players."""
         while not self.board.is_game_over():
+            if self.show_progress and self.progress % 5 == 0:
+                print(f"\n({self.board.size},{self.minimax_depth},{self.mcts_iteration}) {self.progress}%")
+
             if self.board.has_valid_moves():
                 player = self.players[self.board.current_player]
                 move = player.get_move_timed(self.board)
                 self.board.make_move(move[0], move[1])
+                if self.show_progress:
+                    self.progress = self.board.game_progress(player.move_number)
             else:
                 # No valid moves, switch players
                 self.board.current_player = 3 - self.board.current_player
@@ -641,7 +669,7 @@ class CompareResult:
                 self.average_nodes_explored = player.average_explored_nodes_per_move()
         
         def __init__(self, number, player1: ReversiPlayer, player2: ReversiPlayer, winner):
-            check_player1_is_minimax = player1.__class__.__name__ == MinimaxPlayer.__name__
+            check_player1_is_minimax = player1.check_player_is_minimax()
 
             self.number = number
             self.minimax_player = 1 if check_player1_is_minimax else 2

@@ -8,6 +8,7 @@ import json
 num_games = 5
 debug = False
 print_solution = False
+show_progress = False
 report_file = 'results.csv'
 report_node_file = 'results_node.csv'
 minimax_weight_file = 'weights.json'
@@ -25,11 +26,11 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
     
     for i in range(num_games):
         # Play with Minimax as black (player 1)
-        print(f"\n({board_size},{minimax_depth},{mcts_itereation})")
+        print(f"\n({board_size},{minimax_depth},{mcts_itereation})", end=' ')
         print(f"Game {i*2+1}: Minimax(Black) vs MCTS(White)")
         minimax_player = MinimaxPlayer(1, minimax_depth)
         mcts_player = MCTSPlayer(2, mcts_itereation)
-        game1 = ReversiGame(minimax_player, mcts_player, board_size, print_solution)
+        game1 = ReversiGame(minimax_player, mcts_player, board_size, print_solution, show_progress)
         winner, _, _ = game1.play_game()
         
         # Debug info for game 1
@@ -49,11 +50,11 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         result.add_game_result(i, minimax_player, mcts_player, winner)
 
         # Play with MCTS as black (player 1)
-        print(f"\n({board_size},{minimax_depth},{mcts_itereation})")
+        print(f"\n({board_size},{minimax_depth},{mcts_itereation})", end=' ')
         print(f"Game {i*2+2}: MCTS(Black) vs Minimax(White)")
         minimax_player = MinimaxPlayer(2, minimax_depth)
         mcts_player = MCTSPlayer(1, mcts_itereation)
-        game2 = ReversiGame(mcts_player, minimax_player, board_size, print_solution)
+        game2 = ReversiGame(mcts_player, minimax_player, board_size, print_solution, show_progress)
         winner, _, _ = game2.play_game()
 
         # Debug info for game 2
@@ -245,16 +246,18 @@ def import_weights_json():
 
 def main():
     # Access global variable
-    global debug, print_solution
+    global debug, print_solution, show_progress
 
     parser = argparse.ArgumentParser(description="Reversi: MInimax vs Monte Carlo")
     parser.add_argument('--multi', action='store_true', help="Run in multiprocessing mode")
     parser.add_argument('--print-solution', action='store_true', help="Print the solved board")
+    parser.add_argument('--show-progress', action='store_true', help="Print the percent completed of the game")
     parser.add_argument('--debug', action='store_true', help="Enable debug output")
 
     args = parser.parse_args()
     # Change variables if they are offered in arguments
     if args.debug != debug: debug = args.debug
+    if args.show_progress != show_progress: show_progress = args.show_progress
     if args.print_solution != print_solution: print_solution = args.print_solution
 
     import_weights_json()
