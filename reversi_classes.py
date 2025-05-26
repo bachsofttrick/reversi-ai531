@@ -601,6 +601,7 @@ class ReversiGame:
         self.white_count = 0
         self.show_progress = show_progress
         self.progress = 0
+        self.total_time_to_stop = 3600
         if player1.check_player_is_minimax():
             self.minimax_depth = player1.depth
             self.mcts_iteration = player2.iterations
@@ -608,7 +609,7 @@ class ReversiGame:
             self.minimax_depth = player2.depth
             self.mcts_iteration = player1.iterations
 
-    def play_game(self):
+    def play_game(self, stop_early=False):
         """Play a game between two AI players."""
         while not self.board.is_game_over():
             if self.show_progress and self.progress % 5 == 0:
@@ -616,6 +617,12 @@ class ReversiGame:
 
             if self.board.has_valid_moves():
                 player = self.players[self.board.current_player]
+
+                # Stop playing when the game goes on too long
+                if stop_early and player.total_time > self.total_time_to_stop:
+                    print(f"\n({self.board.size},{self.minimax_depth},{self.mcts_iteration}) A player's timer has run out.")
+                    break
+
                 move = player.get_move_timed(self.board)
                 self.board.make_move(move[0], move[1])
                 if self.show_progress:

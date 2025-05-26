@@ -9,6 +9,7 @@ num_games = 5
 debug = False
 print_solution = False
 show_progress = False
+stop_early=True
 report_file = 'results.csv'
 report_node_file = 'results_node.csv'
 minimax_weight_file = 'weights.json'
@@ -31,7 +32,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         minimax_player = MinimaxPlayer(1, minimax_depth)
         mcts_player = MCTSPlayer(2, mcts_itereation)
         game1 = ReversiGame(minimax_player, mcts_player, board_size, print_solution, show_progress)
-        winner, _, _ = game1.play_game()
+        winner, _, _ = game1.play_game(stop_early)
         
         # Debug info for game 1
         if debug:
@@ -55,7 +56,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         minimax_player = MinimaxPlayer(2, minimax_depth)
         mcts_player = MCTSPlayer(1, mcts_itereation)
         game2 = ReversiGame(mcts_player, minimax_player, board_size, print_solution, show_progress)
-        winner, _, _ = game2.play_game()
+        winner, _, _ = game2.play_game(stop_early)
 
         # Debug info for game 2
         if debug:
