@@ -280,26 +280,15 @@ class MinimaxPlayer(ReversiPlayer):
     # Weights available to all instace of MinimaxPlayer
     WEIGHTS: dict[int, np.ndarray]
 
-    def __init__(self, player_number, depth=4):
+    def __init__(self, player_number, depth=4, weights=None):
         super().__init__(player_number)
         self.depth = depth
         
         # Node counting for current move
         self.nodes_created = 0
         self.nodes_explored = 0
-    
-    def import_weights_json(minimax_weight_file):
-        """
-        Load board weights from a JSON file and convert each board size entry into a NumPy array.
-        
-        Returns:
-            dict[int, np.ndarray]: Dictionary mapping board size to its weight matrix as a NumPy array.
-        """
-        with open(minimax_weight_file, "r") as f:
-            data = json.load(f)
-
-        weights = {int(size): np.array(matrix) for size, matrix in data.items()}
-        MinimaxPlayer.WEIGHTS = weights
+        if weights:
+            MinimaxPlayer.WEIGHTS = weights
 
     def get_move(self, board: ReversiBoard):
         """Get the best move using Minimax with Alpha-Beta pruning."""
