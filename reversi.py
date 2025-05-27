@@ -13,7 +13,11 @@ report_file = 'results.csv'
 report_node_file = 'results_node.csv'
 minimax_weight_file = 'weights.json'
 
-def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itereation = 10):
+# Weights available to all instace of MinimaxPlayer
+WEIGHTS: dict[int, np.ndarray]
+
+def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itereation = 10,
+                       minimax_weights = None):
     """Compare Minimax with Alpha-Beta pruning against Monte Carlo Tree Search."""
     result = CompareResult(num_games*2, board_size, minimax_depth, mcts_itereation)
 
@@ -28,7 +32,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         # Play with Minimax as black (player 1)
         print(f"\n({board_size},{minimax_depth},{mcts_itereation})", end=' ')
         print(f"Game {i*2+1}: Minimax(Black) vs MCTS(White)")
-        minimax_player = MinimaxPlayer(1, minimax_depth)
+        minimax_player = MinimaxPlayer(1, minimax_depth, minimax_weights)
         mcts_player = MCTSPlayer(2, mcts_itereation)
         game1 = ReversiGame(minimax_player, mcts_player, board_size, print_solution, show_progress)
         winner, playing_too_long = game1.play_game(stop_early)
@@ -52,7 +56,7 @@ def compare_algorithms(num_games=10, board_size=8, minimax_depth = 3, mcts_itere
         # Play with MCTS as black (player 1)
         print(f"\n({board_size},{minimax_depth},{mcts_itereation})", end=' ')
         print(f"Game {i*2+2}: MCTS(Black) vs Minimax(White)")
-        minimax_player = MinimaxPlayer(2, minimax_depth)
+        minimax_player = MinimaxPlayer(2, minimax_depth, minimax_weights)
         mcts_player = MCTSPlayer(1, mcts_itereation)
         game2 = ReversiGame(mcts_player, minimax_player, board_size, print_solution, show_progress)
         winner, playing_too_long = game2.play_game(stop_early)
@@ -93,7 +97,7 @@ def run_experiments(multiprocess=False, demo_mode=False):
     """
     board_sizes = [4, 6, 8, 10, 12, 14, 16]
     minimax_depths = [3, 4, 5, 6]
-    monte_carlo_iterations = [10, 20, 50, 100, 200, 500, 1000]
+    monte_carlo_iterations = [100, 1000, 10000, 100000]
 
     if demo_mode:
         board_sizes = [4]
@@ -112,7 +116,7 @@ def run_experiments(multiprocess=False, demo_mode=False):
         for m in minimax_depths:
             for n in monte_carlo_iterations:
                 for b in board_sizes:
-                    task = (num_games, b, m, n)
+                    task = (num_games, b, m, n, WEIGHTS)
                     tasks.append(task)
         
         print(f"Running experiments using {num_processes} processes")
@@ -128,10 +132,25 @@ def run_experiments(multiprocess=False, demo_mode=False):
         for m in minimax_depths:
             for n in monte_carlo_iterations:
                 for b in board_sizes:
-                    result = compare_algorithms(num_games, b, m, n)
+                    result = compare_algorithms(num_games, b, m, n, WEIGHTS)
                     results_list.append(result)
 
     return results_list
+ 
+def import_weights_json(minimax_weight_file):
+    """
+    Load board weights from a JSON file and convert each board size entry into a NumPy array.
+    
+    Returns:
+        dict[int, np.ndarray]: Dictionary mapping board size to its weight matrix as a NumPy array.
+    """
+    global WEIGHTS
+
+    with open(minimax_weight_file, "r") as f:
+        data = json.load(f)
+
+    weights = {int(size): np.array(matrix) for size, matrix in data.items()}
+    WEIGHTS = weights
 
 def main():
     # Access global variable
@@ -148,8 +167,8 @@ def main():
     if args.debug != debug: debug = args.debug
     if args.show_progress != show_progress: show_progress = args.show_progress
     if args.print_solution != print_solution: print_solution = args.print_solution
-
-    MinimaxPlayer.import_weights_json(minimax_weight_file)
+    
+    import_weights_json(minimax_weight_file)
     results = run_experiments(args.multi)
     save_to_csv(results, report_file, report_node_file)
 
