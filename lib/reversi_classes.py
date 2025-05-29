@@ -262,7 +262,7 @@ class ReversiPlayer:
         return self.total_time / self.move_number if self.move_number > 0 else 0
     
     def average_created_nodes_per_move(self):
-        return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
+        return self.total_nodes_created / self.move_number if self.move_number > 0 else 0
     
     def average_explored_nodes_per_move(self):
         return self.total_nodes_explored / self.move_number if self.move_number > 0 else 0
