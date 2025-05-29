@@ -4,7 +4,7 @@ from lib.compare_result import  *
 import multiprocessing as mp
 import argparse
 
-num_games = 5
+num_games = 3
 debug = False
 print_solution = False
 show_progress = False
@@ -95,7 +95,7 @@ def run_experiments(multiprocess=False, demo_mode=False):
     """
     Test Minimax vs Monte Carlo across different board sizes and parameters.
     """
-    board_sizes = [4, 6, 8, 10, 12, 14, 16]
+    board_sizes = [4, 8, 12]
     minimax_depths = [3, 4, 5, 6]
     monte_carlo_iterations = [100, 1000, 10000, 100000]
 

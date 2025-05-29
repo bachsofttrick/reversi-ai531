@@ -213,7 +213,7 @@ class ReversiPlayer:
         self.total_time = 0
         self.max_time_to_make_move = 0
         self.move_with_max_time = 0
-        self.total_time_to_stop = 3600
+        self.total_time_to_stop = 1800
         
         # Node counting
         self.total_nodes_created = 0
