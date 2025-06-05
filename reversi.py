@@ -97,7 +97,7 @@ def run_experiments(multiprocess=False, demo_mode=False):
     """
     board_sizes = [4, 8, 12]
     minimax_depths = [3, 4, 5, 6]
-    monte_carlo_iterations = [100, 1000, 10000, 100000]
+    monte_carlo_iterations = [10, 100, 1000, 10000]
 
     if demo_mode:
         board_sizes = [4]
