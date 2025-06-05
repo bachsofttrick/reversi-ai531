@@ -7,6 +7,7 @@
 This program is used to compare between two algorithms.
 - Minimax with Alpha-Beta Pruning
 - Monte Carlo Tree Search
+
 The board has multiple sizes: 4,8,12.  
 We play 6 games each, 3 with black being Minimax, 3 with black being Monte Carlo.  
 Minimax change the depth of tree: 3,4,5,6.  
