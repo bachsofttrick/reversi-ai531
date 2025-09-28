@@ -2,7 +2,6 @@
 ### By Mykyta Synytsia, Phan Xuan Bach
 
 * [Paper](https://github.com/bachsofttrick/reversi-ai531/blob/master/paper.pdf)
-* [Slide](https://github.com/bachsofttrick/reversi-ai531/blob/master/slide.pptx)
 
 This program is used to compare between two algorithms.
 - Minimax with Alpha-Beta Pruning
